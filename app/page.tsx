@@ -1,18 +1,21 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+
+// Core UI Components
 import Navbar from '@/components/Navbar';
 import BottomNav from '@/components/BottomNav';
 import DrawerMenu from '@/components/DrawerMenu';
 import Toast from '@/components/Toast';
 import PinLockScreen from '@/components/PinLockScreen';
 
-// Import View Components & Ultra-Lean Modules
+// Modules
 import DashboardModule from '@/components/modules/DashboardModule';
 import MasterModule from '@/components/modules/MasterModule';
 import RevenueHistoryModule from '@/components/modules/RevenueHistoryModule';
+import MitraModule from '@/components/modules/MitraModule';
 
-// Import Form Modal Dialog Components
+// Form Modals
 import BelanjaBatchModal from '@/components/modals/BelanjaBatchModal';
 import PengolahanModal from '@/components/modals/PengolahanModal';
 import AmbilMitraModal from '@/components/modals/AmbilMitraModal';
@@ -23,97 +26,14 @@ import ProductModal from '@/components/modals/ProductModal';
 import MitraModal from '@/components/modals/MitraModal';
 import ResetDataModal from '@/components/modals/ResetDataModal';
 
-// Import Types & Helpers
-import { Product, Mitra, PurchaseBatch, Sale, ProductStock, CapitalLog, PeriodFilter } from '@/lib/types';
-import { formatRupiah, formatDate } from '@/lib/utils';
+// Types & Utilities
+import { Product, Mitra, PurchaseBatch, Sale, ProductStock, CapitalLog } from '@/lib/types';
+import { formatRupiah } from '@/lib/utils';
+import { mapProduct, mapMitra, mapBatch, mapSale } from '@/lib/mappers';
 import { registerServiceWorkerAndRequestPermission } from '@/lib/notification';
-import { Users, Plus, CheckCircle2, ShoppingBag, Trophy, Calendar, Home } from 'lucide-react';
 
-// ── Helper Mappers ─────────────────────────────────────────────────────────────
-function mapProduct(r: any): Product {
-  return {
-    id: r.id,
-    name: r.name,
-    category: r.category || 'Umum',
-    price: Number(r.price) || 0,
-    avgHpp: Number(r.avg_hpp ?? r.avgHpp ?? 0),
-    status: r.status ?? 'active',
-  };
-}
-
-function mapMitra(r: any): Mitra {
-  let customPrices = {};
-  if (r.custom_prices || r.customPrices) {
-    try {
-      const raw = r.custom_prices ?? r.customPrices;
-      customPrices = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    } catch (e) {
-      customPrices = {};
-    }
-  }
-  return {
-    id: r.id,
-    name: r.name,
-    type: r.type || 'Warung',
-    whatsapp: r.whatsapp ?? '',
-    address: r.address ?? '',
-    customPrices,
-    status: r.status ?? 'active',
-    lifetimeOmzet: Number(r.lifetimeOmzet ?? r.lifetime_omzet ?? 0),
-    monthlyOmzet: Number(r.monthlyOmzet ?? r.monthly_omzet ?? 0),
-    todayOmzet: Number(r.todayOmzet ?? r.today_omzet ?? 0),
-    totalSoldQty: Number(r.totalSoldQty ?? r.total_sold_qty ?? 0),
-  };
-}
-
-function mapBatch(r: any): PurchaseBatch {
-  let allocations = [];
-  if (r.allocations) {
-    try {
-      allocations = typeof r.allocations === 'string' ? JSON.parse(r.allocations) : r.allocations;
-    } catch (e) {
-      allocations = [];
-    }
-  }
-  let status = r.status ?? 'tersedia';
-  if (status === 'pending_production') status = 'tersedia';
-  if (status === 'produced' || status === 'completed') status = 'habis';
-
-  return {
-    id: r.id,
-    batchId: r.batch_id ?? r.batchId,
-    date: r.created_at ?? r.date ?? new Date().toISOString(),
-    itemsDescription: r.items_description ?? r.itemsDescription ?? '',
-    totalCost: Number(r.total_cost ?? r.totalCost ?? 0),
-    supplier: r.supplier ?? 'Supplier Umum',
-    status,
-    productId: r.product_id ?? r.productId ?? null,
-    producedQty: Number(r.produced_qty ?? r.producedQty ?? 0),
-    calculatedHpp: Number(r.calculated_hpp ?? r.calculatedHpp ?? 0),
-    allocations,
-  };
-}
-
-function mapSale(r: any): Sale {
-  return {
-    id: r.id,
-    trxNumber: r.trx_number ?? r.trxNumber,
-    saleType: r.sale_type ?? r.saleType ?? 'DIRECT',
-    mitraId: r.mitra_id ?? r.mitraId ?? null,
-    productId: r.product_id ?? r.productId ?? 'P-HOME',
-    batchId: r.batch_id ?? r.batchId ?? null,
-    titipQty: Number(r.titip_qty ?? r.titipQty ?? 0),
-    returnedQty: Number(r.returned_qty ?? r.returnedQty ?? 0),
-    quantity: Number(r.quantity ?? 0),
-    pricePerUnit: Number(r.price_per_unit ?? r.pricePerUnit ?? 0),
-    totalAmount: Number(r.total_amount ?? r.totalAmount ?? 0),
-    hppPerUnit: Number(r.hpp_per_unit ?? r.hppPerUnit ?? 0),
-    recoveredCost: Number(r.recovered_cost ?? r.recoveredCost ?? 0),
-    profit: Number(r.profit ?? 0),
-    paymentMethod: r.payment_method ?? r.paymentMethod ?? 'CASH',
-    createdAt: r.created_at ?? r.createdAt ?? new Date().toISOString(),
-  };
-}
+// API Service Layer
+import * as api from '@/lib/api/dapurzyApi';
 
 export default function DAPURZYApp() {
   // --- STATE PIN SECURITY ---
@@ -174,9 +94,7 @@ export default function DAPURZYApp() {
   >(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingMitra, setEditingMitra] = useState<Mitra | null>(null);
-  const [mitraTabPeriod, setMitraTabPeriod] = useState<PeriodFilter>('all');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  // D2 FIX: State untuk pre-select batch saat membuka PengolahanModal dari kartu batch
   const [pengolahanInitialBatchId, setPengolahanInitialBatchId] = useState<string>('');
 
   // --- FINANCIAL & CORE STATE ---
@@ -195,17 +113,11 @@ export default function DAPURZYApp() {
     setTimeout(() => setNotification(null), 3500);
   };
 
-  // ── LOAD ALL DATA FROM D1 ──────────────────────────────────────────────────
+  // ── LOAD DATA ──────────────────────────────────────────────────────────────
   const loadFromD1 = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/sync');
-      if (!res.ok) {
-        showToast('Gagal memuat data dari database.', 'error');
-        setIsLoading(false);
-        return;
-      }
-      const json = await res.json();
+      const json = await api.fetchSyncData();
       if (json.success && json.data) {
         const d = json.data;
         setOperatingCapital(d.operatingCapital ?? 0);
@@ -234,17 +146,11 @@ export default function DAPURZYApp() {
       showToast('Nominal modal harus lebih besar dari 0!', 'error');
       return;
     }
-
     const id = `CAP-${Date.now()}`;
     const trxNumber = `TRX-CAP-${Date.now().toString().slice(-6)}`;
 
     try {
-      const res = await fetch('/api/capital', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, trxNumber, amount, note, type }),
-      });
-      const json = await res.json();
+      const json = await api.postCapital({ id, trxNumber, amount, note, type });
       if (!json.success) { showToast(json.error || 'Gagal menyimpan transaksi modal!', 'error'); return; }
 
       const actionMsg = type === 'WITHDRAWAL' ? 'Pengurangan / koreksi modal' : 'Injeksi modal';
@@ -259,10 +165,8 @@ export default function DAPURZYApp() {
   // 1e. Hapus Log Modal Usaha
   const handleDeleteCapitalLog = async (logId: string) => {
     try {
-      const res = await fetch(`/api/capital?id=${logId}`, { method: 'DELETE' });
-      const json = await res.json();
+      const json = await api.deleteCapitalLog(logId);
       if (!json.success) { showToast(json.error || 'Gagal menghapus log modal!', 'error'); return; }
-
       showToast('Log modal berhasil dihapus!');
       await loadFromD1();
     } catch (e) {
@@ -278,19 +182,14 @@ export default function DAPURZYApp() {
     const id = `PB-${Date.now()}`;
 
     try {
-      const res = await fetch('/api/purchases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id,
-          batchId,
-          itemsDescription,
-          totalCost,
-          date,
-          supplier: 'Supplier Umum',
-        }),
+      const json = await api.postBelanjaBatch({
+        id,
+        batchId,
+        itemsDescription,
+        totalCost,
+        date,
+        supplier: 'Supplier Umum',
       });
-      const json = await res.json();
       if (!json.success) { showToast(json.error || 'Gagal menyimpan batch belanja!', 'error'); return; }
 
       showToast(`Batch Belanja ${batchId} berhasil disimpan! (${formatRupiah(totalCost)} memotong Kas Modal)`);
@@ -302,26 +201,11 @@ export default function DAPURZYApp() {
   };
 
   // 1c. Modul Pembuatan / Pengolahan (Batch Tersedia -> Status Habis, Masuk Stok Produk Jadi)
-  const handlePengolahan = async (data: {
-    batchId: string;
-    productId: string;
-    producedQty: number;
-    calculatedHpp: number;
-  }) => {
+  const handlePengolahan = async (data: { batchId: string; productId: string; producedQty: number; calculatedHpp: number }) => {
     const { batchId, productId, producedQty, calculatedHpp } = data;
 
     try {
-      const res = await fetch('/api/purchases', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          batchId,
-          productId,
-          producedQty,
-          calculatedHpp,
-        }),
-      });
-      const json = await res.json();
+      const json = await api.putPengolahan({ batchId, productId, producedQty, calculatedHpp });
       if (!json.success) { showToast(json.error || 'Gagal memproses pengolahan batch!', 'error'); return; }
 
       showToast(`Pengolahan selesai! ${producedQty} pcs masuk ke Stok Produk Jadi (HPP: ${formatRupiah(calculatedHpp)})`);
@@ -333,12 +217,7 @@ export default function DAPURZYApp() {
   };
 
   // 1d. Modul Ambil Produk Mitra (Stok Produk Jadi -> Stok Mitra)
-  const handleAmbilMitra = async (data: {
-    mitraId: string;
-    productId: string;
-    quantity: number;
-    note?: string;
-  }) => {
+  const handleAmbilMitra = async (data: { mitraId: string; productId: string; quantity: number; note?: string }) => {
     const { mitraId, productId, quantity, note } = data;
     const mitraObj = mitras.find((m) => m.id === mitraId);
 
@@ -352,35 +231,24 @@ export default function DAPURZYApp() {
     const targetNewQty = (targetStock?.quantity || 0) + quantity;
 
     const newTargetStock = !targetStockId
-      ? {
-          id: `STK-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          productId,
-          locationType: 'mitra',
-          mitraId,
-          quantity,
-        }
+      ? { id: `STK-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, productId, locationType: 'mitra', mitraId, quantity }
       : undefined;
 
     try {
-      const res = await fetch('/api/movements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: `MOV-${Date.now()}`,
-          trxNumber: `TRX-AMBIL-${Date.now().toString().slice(-6)}`,
-          productId,
-          type: 'GUDANG_TO_MITRA',
-          mitraId,
-          quantity,
-          note: note || `Ambil ${quantity} pcs oleh ${mitraObj?.name || 'Mitra'}`,
-          sourceStockId,
-          sourceNewQty,
-          targetStockId,
-          targetNewQty,
-          newTargetStock,
-        }),
+      const json = await api.postAmbilMitra({
+        id: `MOV-${Date.now()}`,
+        trxNumber: `TRX-AMBIL-${Date.now().toString().slice(-6)}`,
+        productId,
+        type: 'GUDANG_TO_MITRA',
+        mitraId,
+        quantity,
+        note: note || `Ambil ${quantity} pcs oleh ${mitraObj?.name || 'Mitra'}`,
+        sourceStockId,
+        sourceNewQty,
+        targetStockId,
+        targetNewQty,
+        newTargetStock,
       });
-      const json = await res.json();
       if (!json.success) { showToast(json.error || 'Gagal mencatat pengambilan mitra!', 'error'); return; }
 
       showToast(`Pengambilan ${quantity} pcs oleh ${mitraObj?.name || 'Mitra'} berhasil dicatat!`);
@@ -390,7 +258,6 @@ export default function DAPURZYApp() {
       showToast('Koneksi database gagal saat mencatat pengambilan mitra.', 'error');
     }
   };
-
 
   // 3. Rekap Setoran Mitra (Konsinyasi & Beli Putus)
   const handleMitraSettlement = async (data: {
@@ -414,33 +281,33 @@ export default function DAPURZYApp() {
 
     const hpp = product.avgHpp || 0;
     const totalAmount = soldQty * pricePerUnit;
-    const profit = totalAmount - (soldQty * hpp);
+    const recoveredCost = soldQty * hpp;
+    const profit = totalAmount - recoveredCost;
+    const trxNumber = `TRX-${Date.now().toString().slice(-6)}`;
+    const id = `SALE-${Date.now()}`;
 
     try {
-      const res = await fetch('/api/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: `SALE-MITRA-${Date.now()}`,
-          trxNumber: `TRX-SETTLE-${Date.now().toString().slice(-6)}`,
-          productId,
-          mitraId,
-          titipQty,
-          returnedQty,
-          quantity: soldQty,
-          pricePerUnit,
-          hppPerUnit: hpp,
-          totalAmount,
-          profit,
-          saleType: transactionType === 'BELI_PUTUS' ? 'MITRA' : 'CONSIGNMENT',
-          transactionType: transactionType || 'KONSINYASI',
-          paymentMethod,
-        }),
+      const json = await api.postSale({
+        id,
+        trxNumber,
+        saleType: transactionType === 'BELI_PUTUS' ? 'MITRA' : 'CONSIGNMENT',
+        transactionType: transactionType || 'KONSINYASI',
+        mitraId,
+        productId,
+        titipQty,
+        returnedQty,
+        quantity: soldQty,
+        pricePerUnit,
+        totalAmount,
+        hppPerUnit: hpp,
+        recoveredCost,
+        profit,
+        paymentMethod,
       });
-      const json = await res.json();
-      if (!json.success) { showToast(json.error || 'Gagal menyimpan setoran!', 'error'); return; }
 
-      showToast(`Rekap Setoran ${mitraObj.name} berhasil! (${soldQty} pcs laku, Omset: ${formatRupiah(totalAmount)})`);
+      if (!json.success) { showToast(json.error || 'Gagal menyimpan setoran mitra!', 'error'); return; }
+
+      showToast(`Setoran ${mitraObj.name} sebesar ${formatRupiah(totalAmount)} berhasil diterima!`);
       setActiveModal(null);
       await loadFromD1();
     } catch (e) {
@@ -448,100 +315,87 @@ export default function DAPURZYApp() {
     }
   };
 
-  // 4. Setor Uang Toples Rumah 1-Tap (Opsi 1)
+  // 4. Setoran Jual di Rumah (1-Tap Deposit)
   const handleHomeSalesDeposit = async (data: { amount: number; note: string }) => {
     const { amount, note } = data;
     if (amount <= 0) {
-      showToast('Nominal setor uang rumah harus lebih dari 0!', 'error');
+      showToast('Nominal setoran rumah harus lebih dari Rp 0!', 'error');
       return;
     }
 
-    const defaultProd = products[0];
-    const productId = defaultProd?.id || 'P-HOME';
+    const firstProd = products.length > 0 ? products[0] : null;
+    const price = firstProd?.price || 1;
+    const avgHpp = firstProd?.avgHpp || 0;
+    const hppRatio = price > 0 ? (avgHpp / price) : 0.6;
 
-    // BUG #11 FIX: Estimasi profit menggunakan rasio HPP aktual produk, bukan hardcoded 40%.
-    // hppRatio = avgHpp / price → proporsi biaya produksi terhadap harga jual.
-    // Jika produk belum ada / HPP belum di-set, fallback ke rasio 60% HPP (40% profit).
-    const hppRatio = (defaultProd && defaultProd.price > 0)
-      ? Math.min(defaultProd.avgHpp / defaultProd.price, 1)
-      : 0.6;
-    const hpp = Math.round(amount * hppRatio);
-    const profit = amount - hpp;
+    const estimatedQty = Math.max(1, Math.round(amount / price));
+    const hppPerUnit = avgHpp > 0 ? avgHpp : Math.round((amount * hppRatio) / estimatedQty);
+    const recoveredCost = Math.round(amount * hppRatio);
+    const profit = amount - recoveredCost;
+
+    const trxNumber = `TRX-HOME-${Date.now().toString().slice(-6)}`;
+    const id = `SALE-HOME-${Date.now()}`;
 
     try {
-      const res = await fetch('/api/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: `SALE-HOME-${Date.now()}`,
-          trxNumber: `TRX-HOME-${Date.now().toString().slice(-6)}`,
-          productId,
-          mitraId: null,
-          titipQty: 0,
-          returnedQty: 0,
-          quantity: 1,
-          pricePerUnit: amount,
-          hppPerUnit: hpp,
-          totalAmount: amount,
-          profit,
-          saleType: 'DIRECT',
-          paymentMethod: 'CASH',
-        }),
+      const json = await api.postSale({
+        id,
+        trxNumber,
+        saleType: 'DIRECT',
+        mitraId: null,
+        productId: firstProd?.id || 'P-HOME',
+        quantity: estimatedQty,
+        pricePerUnit: Math.round(amount / estimatedQty),
+        totalAmount: amount,
+        hppPerUnit,
+        recoveredCost,
+        profit,
+        paymentMethod: 'CASH',
       });
-      const json = await res.json();
-      if (!json.success) { showToast(json.error || 'Gagal menyimpan setor uang rumah!', 'error'); return; }
 
-      showToast(`Setoran Uang Rumah ${formatRupiah(amount)} berhasil disimpan! (${note})`);
+      if (!json.success) { showToast(json.error || 'Gagal menyimpan setoran rumah!', 'error'); return; }
+
+      showToast(`Setoran Uang Rumah ${formatRupiah(amount)} berhasil diterima!`);
       setActiveModal(null);
       await loadFromD1();
     } catch (e) {
-      showToast('Koneksi database gagal.', 'error');
+      showToast('Koneksi database gagal saat menyimpan setoran rumah.', 'error');
     }
   };
 
-  // 5. Save Product
-  const handleSaveProduct = async (data: { id?: string; name: string; category: string; price: number }) => {
-    if (!data.name || data.price <= 0) { showToast('Nama produk dan harga jual harus valid!', 'error'); return; }
-
+  // 5. Tambah / Edit Master Produk
+  const handleCreateOrUpdateProduct = async (data: { id?: string; name: string; category: string; price: number }) => {
     const id = data.id || `P-${Date.now()}`;
+    const avgHpp = editingProduct ? editingProduct.avgHpp : 0;
+
     try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, name: data.name, category: data.category || 'Umum', price: data.price, avgHpp: 0 }),
-      });
-      const json = await res.json();
+      const json = await api.postProduct({ id, name: data.name, category: data.category, price: data.price, avgHpp });
       if (!json.success) { showToast(json.error || 'Gagal menyimpan produk!', 'error'); return; }
 
-      showToast(`Master produk "${data.name}" berhasil disimpan!`);
-      setEditingProduct(null);
+      showToast(`Produk ${data.name} berhasil disimpan!`);
       setActiveModal(null);
+      setEditingProduct(null);
       await loadFromD1();
     } catch (e) {
-      showToast('Koneksi database gagal.', 'error');
+      showToast('Koneksi database gagal saat menyimpan produk.', 'error');
     }
   };
 
-  // 6. Delete Product
+  // 6. Hapus Master Produk
   const handleDeleteProduct = async (productId: string) => {
-    const product = products.find((p) => p.id === productId);
-    if (!product) return;
-    if (!confirm(`Apakah Anda yakin ingin menghapus master produk "${product.name}"?`)) return;
-
+    if (!confirm('Apakah Anda yakin ingin menghapus produk ini dari Master?')) return;
     try {
-      const res = await fetch(`/api/products?id=${productId}`, { method: 'DELETE' });
-      const json = await res.json();
+      const json = await api.deleteProduct(productId);
       if (!json.success) { showToast(json.error || 'Gagal menghapus produk!', 'error'); return; }
 
-      showToast(`Master produk "${product.name}" telah dihapus!`);
+      showToast('Produk berhasil dihapus!');
       await loadFromD1();
     } catch (e) {
-      showToast('Koneksi database gagal.', 'error');
+      showToast('Koneksi database gagal saat menghapus produk.', 'error');
     }
   };
 
-  // 7. Save Mitra (with custom prices)
-  const handleSaveMitra = async (data: {
+  // 7. Tambah / Edit Master Mitra
+  const handleCreateOrUpdateMitra = async (data: {
     id?: string;
     name: string;
     type: string;
@@ -549,71 +403,60 @@ export default function DAPURZYApp() {
     address: string;
     customPrices?: Record<string, number>;
   }) => {
-    if (!data.name) { showToast('Nama mitra harus diisi!', 'error'); return; }
-
     const id = data.id || `M-${Date.now()}`;
+
     try {
-      const res = await fetch('/api/mitras', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id,
-          name: data.name,
-          type: data.type || 'Warung',
-          whatsapp: data.whatsapp || '',
-          address: data.address || '',
-          customPrices: data.customPrices || {},
-        }),
+      const json = await api.postMitra({
+        id,
+        name: data.name,
+        type: data.type,
+        whatsapp: data.whatsapp,
+        address: data.address,
+        customPrices: data.customPrices,
       });
-      const json = await res.json();
       if (!json.success) { showToast(json.error || 'Gagal menyimpan mitra!', 'error'); return; }
 
-      showToast(`Mitra "${data.name}" berhasil disimpan!`);
-      setEditingMitra(null);
+      showToast(`Mitra ${data.name} berhasil disimpan!`);
       setActiveModal(null);
+      setEditingMitra(null);
       await loadFromD1();
     } catch (e) {
-      showToast('Koneksi database gagal.', 'error');
+      showToast('Koneksi database gagal saat menyimpan mitra.', 'error');
     }
   };
 
-  // 8. Delete Mitra
+  // 8. Hapus Master Mitra
   const handleDeleteMitra = async (mitraId: string) => {
-    const mitra = mitras.find((m) => m.id === mitraId);
-    if (!mitra) return;
-    if (!confirm(`Apakah Anda yakin ingin menghapus master mitra "${mitra.name}"?`)) return;
-
+    if (!confirm('Apakah Anda yakin ingin menghapus mitra ini?')) return;
     try {
-      const res = await fetch(`/api/mitras?id=${mitraId}`, { method: 'DELETE' });
-      const json = await res.json();
+      const json = await api.deleteMitra(mitraId);
       if (!json.success) { showToast(json.error || 'Gagal menghapus mitra!', 'error'); return; }
 
-      showToast(`Mitra "${mitra.name}" telah dihapus!`);
+      showToast('Mitra berhasil dihapus!');
       await loadFromD1();
     } catch (e) {
-      showToast('Koneksi database gagal.', 'error');
+      showToast('Koneksi database gagal saat menghapus mitra.', 'error');
     }
   };
 
+  // Share Sale Nota to WhatsApp
   const handleShareSaleToWhatsApp = (sale: Sale) => {
     const mitra = mitras.find((m) => m.id === sale.mitraId);
     const product = products.find((p) => p.id === sale.productId);
-    const dateStr = formatDate(sale.createdAt);
-
     const cleanWa = mitra?.whatsapp ? mitra.whatsapp.replace(/[^0-9]/g, '') : '';
-    const msg = `*NOTA REKAP SETORAN - DAPURZY* 🍞
+    const dateStr = sale.createdAt ? new Date(sale.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
 
-Halo *${mitra?.name || 'Mitra'}*, berikut nota rekap setoran konsinyasi (${dateStr}):
+    const msg = `*NOTA PENJUALAN - DAPURZY* 🍞
+No. Trx: ${sale.trxNumber}
+Tanggal: ${dateStr}
 
-📦 *Produk:* ${product?.name || 'Produk'}
-• Dititipkan: ${sale.titipQty || sale.quantity} pcs
-• Kembali / Basi: ${sale.returnedQty || 0} pcs
------------------------------------
-*Total Laku:* ${sale.quantity} pcs
-*Total Setoran Uang:* ${formatRupiah(sale.totalAmount)}
+Mitra: ${mitra?.name || 'Mitra'}
+Produk: ${product?.name || 'Produk'}
+Item Laku: ${sale.quantity} pcs
+Total Dibayar: ${formatRupiah(sale.totalAmount)}
+Metode: ${sale.paymentMethod}
 
-Metode: ${sale.paymentMethod || 'CASH'}
-Terima kasih banyak atas kerjasamanya! 🙏`;
+Terima kasih atas kerjasamanya! 🙏`;
 
     let waUrl = '';
     if (cleanWa) {
@@ -628,13 +471,7 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
   // 9. Factory Reset
   const handleFactoryResetAllData = async () => {
     try {
-      // BUG #10 FIX: Sertakan secret key yang dibutuhkan backend untuk proteksi reset
-      const res = await fetch('/api/reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret: 'DAPURZY-RESET-2026' }),
-      });
-      const json = await res.json();
+      const json = await api.postFactoryReset();
       if (!json.success) { showToast(json.error || 'Gagal menghapus data!', 'error'); return; }
 
       showToast('Seluruh data aplikasi berhasil dihapus 100%!', 'success');
@@ -695,14 +532,13 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
             stocks={stocks}
             onOpenModal={(modal) => setActiveModal(modal)}
             onOpenPengolahanForBatch={(batchId) => {
-              // D2 FIX: Set batch pre-selected sebelum buka modal pengolahan
               setPengolahanInitialBatchId(batchId);
               setActiveModal('pengolahan');
             }}
           />
         )}
 
-        {/* TAB REVENUE HISTORY: MODAL | HASIL PRODUK | OMSET KOTOR | OMSET BERSIH */}
+        {/* TAB REVENUE HISTORY */}
         {activeTab === 'revenue' && (
           <RevenueHistoryModule
             purchaseBatches={purchaseBatches}
@@ -712,165 +548,17 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
           />
         )}
 
-        {/* TAB 2: MITRA & SETORAN WITH ANALYTICS */}
+        {/* TAB 2: MITRA & SETORAN */}
         {activeTab === 'mitra' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            {/* Header Controls */}
-            <div className="flex flex-wrap justify-between items-center bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs gap-3">
-              <div>
-                <h2 className="font-black text-slate-800 text-sm sm:text-base flex items-center gap-1.5">
-                  <Users className="w-5 h-5 text-amber-600" /> Konsinyasi & Rekap Setoran Mitra
-                </h2>
-                <p className="text-[11px] text-slate-500">Omset harian, bulanan & record total kerjasama</p>
-              </div>
-
-              <div className="flex flex-wrap gap-2 items-center">
-                {/* Period Filter Switcher */}
-                <div className="flex bg-slate-100 p-1 rounded-xl gap-1 text-xs font-bold">
-                  <button
-                    onClick={() => setMitraTabPeriod('today')}
-                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
-                      mitraTabPeriod === 'today' ? 'bg-amber-500 text-white font-extrabold shadow-xs' : 'text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    Hari Ini
-                  </button>
-                  <button
-                    onClick={() => setMitraTabPeriod('month')}
-                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
-                      mitraTabPeriod === 'month' ? 'bg-amber-500 text-white font-extrabold shadow-xs' : 'text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    Bulan Ini
-                  </button>
-                  <button
-                    onClick={() => setMitraTabPeriod('all')}
-                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
-                      mitraTabPeriod === 'all' ? 'bg-amber-500 text-white font-extrabold shadow-xs' : 'text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    Lifetime
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => { setEditingMitra(null); setActiveModal('mitra'); }}
-                  className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl shadow-xs active:scale-95 transition cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>+ Mitra</span>
-                </button>
-                <button
-                  onClick={() => setActiveModal('settlement')}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl shadow-xs active:scale-95 transition cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Rekap Setoran</span>
-                </button>
-              </div>
-            </div>
-
-            {/* LIST MITRA CARDS WITH ANALYTICS BADGES */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {mitras.length === 0 ? (
-                <div className="col-span-2 text-center py-8 bg-white rounded-2xl border border-slate-200 text-slate-400 text-xs">
-                  Belum ada mitra. Klik <b>"Tambah Mitra"</b> untuk menambahkan warung/kantin titipan!
-                </div>
-              ) : (
-                mitras.map((m) => {
-                  const displayedOmzet =
-                    mitraTabPeriod === 'today'
-                      ? m.todayOmzet || 0
-                      : mitraTabPeriod === 'month'
-                      ? m.monthlyOmzet || 0
-                      : m.lifetimeOmzet || 0;
-
-                  return (
-                    <div key={m.id} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3 relative">
-                      {/* D3 FIX: Tab Mitra adalah analytics-only view. Edit/Hapus mitra
-                          di-centralize di MasterModule (Tab Master) agar tidak ada duplikasi CRUD. */}
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md">
-                            {m.type}
-                          </span>
-                          <h3 className="font-black text-slate-800 text-sm mt-1">{m.name}</h3>
-                          {m.address && <p className="text-xs text-slate-500">{m.address}</p>}
-                          {m.whatsapp && <p className="text-[11px] text-emerald-700 font-medium">WA: {m.whatsapp}</p>}
-                        </div>
-                        {/* Shortcut ke Tab Master untuk mengedit mitra */}
-                        <button
-                          onClick={() => setActiveTab('master')}
-                          className="text-xs font-bold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg hover:bg-slate-100 cursor-pointer border border-slate-200"
-                          title="Edit mitra di Master Data"
-                        >
-                          ⚙️ Master
-                        </button>
-                      </div>
-
-                      {/* MITRA ANALYTICS DISPLAY BADGE */}
-                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <span className="text-[10px] text-slate-400 font-bold block uppercase">
-                            Omset ({mitraTabPeriod === 'today' ? 'Hari Ini' : mitraTabPeriod === 'month' ? 'Bulan Ini' : 'Lifetime'})
-                          </span>
-                          <span className="font-black text-emerald-800 text-sm">{formatRupiah(displayedOmzet)}</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-[10px] text-slate-400 font-bold block uppercase">Total Barang Laku</span>
-                          <span className="font-black text-slate-800 text-sm">{m.totalSoldQty || 0} pcs</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            {/* SETORAN HISTORY TABLE */}
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-              <h3 className="font-extrabold text-slate-800 text-xs sm:text-sm flex items-center gap-1.5">
-                <ShoppingBag className="w-4 h-4 text-emerald-600" /> Riwayat Rekap Setoran Diterima
-              </h3>
-              {sales.length === 0 ? (
-                <p className="text-xs text-slate-400 italic">Belum ada riwayat setoran.</p>
-              ) : (
-                <div className="space-y-2 max-h-80 overflow-y-auto no-scrollbar pr-0.5">
-                  {sales.map((s) => {
-                    const product = products.find((p) => p.id === s.productId);
-                    const mitra = mitras.find((m) => m.id === s.mitraId);
-                    return (
-                      <div key={s.id} className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
-                        <div>
-                          <p className="font-bold text-slate-800">
-                            {s.saleType === 'DIRECT' ? '🏡 Setoran Toples Rumah' : `🤝 Setoran: ${mitra?.name || 'Mitra'}`}
-                          </p>
-                          <p className="text-[11px] text-slate-500">
-                            {product?.name || 'Produk'} ({s.quantity} pcs laku) • {formatDate(s.createdAt)}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-right">
-                            <p className="font-black text-emerald-800">{formatRupiah(s.totalAmount)}</p>
-                            <p className="text-[10px] text-amber-700 font-bold">Profit: {formatRupiah(s.profit)}</p>
-                          </div>
-                          {s.saleType !== 'DIRECT' && (
-                            <button
-                              onClick={() => handleShareSaleToWhatsApp(s)}
-                              className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-black px-2 py-1 rounded-lg border border-emerald-300 active:scale-95 transition cursor-pointer flex items-center gap-1"
-                              title="Kirim Nota ke WA Mitra"
-                            >
-                              <span>📲 WA</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+          <MitraModule
+            mitras={mitras}
+            products={products}
+            sales={sales}
+            onOpenCreateMitraModal={() => { setEditingMitra(null); setActiveModal('mitra'); }}
+            onOpenSettlementModal={() => setActiveModal('settlement')}
+            onNavigateToMaster={() => setActiveTab('master')}
+            onShareSaleToWhatsApp={handleShareSaleToWhatsApp}
+          />
         )}
 
         {/* TAB 3: BATCH & MASTER */}
@@ -887,6 +575,9 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
           />
         )}
       </main>
+
+      {/* BOTTOM NAVIGATION BAR */}
+      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* FORM MODAL DIALOGS */}
       <BelanjaBatchModal
@@ -913,7 +604,6 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
         stocks={stocks}
         onSubmit={handleAmbilMitra}
       />
-
 
       <MitraSettlementModal
         isOpen={activeModal === 'settlement'}
@@ -943,15 +633,15 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
         onClose={() => { setActiveModal(null); setEditingProduct(null); }}
         products={products}
         initialData={editingProduct}
-        onSubmit={handleSaveProduct}
+        onSubmit={handleCreateOrUpdateProduct}
       />
 
       <MitraModal
         isOpen={activeModal === 'mitra'}
         onClose={() => { setActiveModal(null); setEditingMitra(null); }}
-        products={products}
         initialData={editingMitra}
-        onSubmit={handleSaveMitra}
+        products={products}
+        onSubmit={handleCreateOrUpdateMitra}
       />
 
       <ResetDataModal
@@ -959,9 +649,6 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
         onClose={() => setActiveModal(null)}
         onConfirmReset={handleFactoryResetAllData}
       />
-
-      {/* MOBILE FLOATING BOTTOM NAVIGATION */}
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
     </div>
   );
 }
