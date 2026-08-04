@@ -278,7 +278,7 @@ export default function DAPURZYApp() {
     }
   };
 
-  // 3. Rekap Setoran Mitra
+  // 3. Rekap Setoran Mitra (Konsinyasi & Beli Putus)
   const handleMitraSettlement = async (data: {
     mitraId: string;
     productId: string;
@@ -287,8 +287,9 @@ export default function DAPURZYApp() {
     soldQty: number;
     pricePerUnit: number;
     paymentMethod: string;
+    transactionType?: 'KONSINYASI' | 'BELI_PUTUS';
   }) => {
-    const { mitraId, productId, titipQty, returnedQty, soldQty, pricePerUnit, paymentMethod } = data;
+    const { mitraId, productId, titipQty, returnedQty, soldQty, pricePerUnit, paymentMethod, transactionType } = data;
     const product = products.find((p) => p.id === productId);
     const mitraObj = mitras.find((m) => m.id === mitraId);
 
@@ -317,7 +318,8 @@ export default function DAPURZYApp() {
           hppPerUnit: hpp,
           totalAmount,
           profit,
-          saleType: 'CONSIGNMENT',
+          saleType: transactionType === 'BELI_PUTUS' ? 'MITRA' : 'CONSIGNMENT',
+          transactionType: transactionType || 'KONSINYASI',
           paymentMethod,
         }),
       });

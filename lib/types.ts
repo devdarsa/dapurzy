@@ -68,6 +68,7 @@ export interface Sale {
   id: string;
   trxNumber: string;
   saleType: 'DIRECT' | 'MITRA' | 'CONSIGNMENT';
+  transactionType?: 'KONSINYASI' | 'BELI_PUTUS';
   mitraId?: string | null;
   productId: string;
   batchId?: string | null;
