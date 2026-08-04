@@ -18,6 +18,27 @@ export function formatRupiah(number: number): string {
 }
 
 /**
+ * Real-time Thousands Dot Separator for Input Fields
+ * @example formatNumberWithDots(200000) => "200.000"
+ */
+export function formatNumberWithDots(val: number | string): string {
+  if (val === undefined || val === null || val === '') return '';
+  const cleanNumber = String(val).replace(/\D/g, '');
+  if (!cleanNumber) return '';
+  return new Intl.NumberFormat('id-ID').format(Number(cleanNumber));
+}
+
+/**
+ * Parses thousands dot separated string back to raw number
+ * @example parseFormattedNumber("200.000") => 200000
+ */
+export function parseFormattedNumber(val: string): number {
+  if (!val) return 0;
+  const cleanNumber = String(val).replace(/\D/g, '');
+  return Number(cleanNumber) || 0;
+}
+
+/**
  * Formats ISO date string to Indonesian human-readable string
  */
 export function formatDate(isoString?: string): string {
