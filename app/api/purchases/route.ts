@@ -97,17 +97,23 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
-    const { batchId, outputs, productId, producedQty, calculatedHpp } = body;
+    const { batchId, outputs, productId, producedQty, calculatedHpp: explicitHpp } = body;
 
     if (!batchId) {
       return NextResponse.json({ success: false, error: 'Batch ID harus diisi' }, { status: 400 });
     }
 
+    // Fetch batch total cost to compute exact HPP
+    const batchRow = await db
+      .prepare('SELECT total_cost FROM purchase_batches WHERE batch_id = ?')
+      .bind(batchId)
+      .first();
+
+    const batchCost = batchRow ? (batchRow.total_cost || 0) : 0;
+
     const itemsToProcess: Array<{
       productId: string;
-      allocatedCost: number;
       producedQty: number;
-      calculatedHpp: number;
     }> = [];
 
     if (Array.isArray(outputs) && outputs.length > 0) {
@@ -115,18 +121,14 @@ export async function PUT(request: Request) {
         if (o.productId && o.producedQty > 0) {
           itemsToProcess.push({
             productId: o.productId,
-            allocatedCost: o.allocatedCost || 0,
-            producedQty: o.producedQty,
-            calculatedHpp: o.calculatedHpp || 0,
+            producedQty: Number(o.producedQty) || 0,
           });
         }
       });
     } else if (productId && producedQty > 0) {
       itemsToProcess.push({
         productId,
-        allocatedCost: body.allocatedCost || 0,
-        producedQty,
-        calculatedHpp: calculatedHpp || 0,
+        producedQty: Number(producedQty) || 0,
       });
     }
 
@@ -135,20 +137,24 @@ export async function PUT(request: Request) {
     }
 
     const totalQty = itemsToProcess.reduce((sum, item) => sum + item.producedQty, 0);
-    const avgHpp = itemsToProcess.reduce((sum, item) => sum + item.allocatedCost, 0) / (totalQty || 1);
+
+    // HPP = Total Nilai Batch / Total Jumlah Produk Hasil Olahan (Sama untuk semua unit produk dari batch ini)
+    const finalHpp = explicitHpp && explicitHpp > 0
+      ? explicitHpp
+      : (totalQty > 0 ? Math.ceil((batchCost / totalQty) / 100) * 100 : 0);
 
     // 1. Mark purchase_batch as produced
     await db
       .prepare('UPDATE purchase_batches SET status = ?, product_id = ?, produced_qty = ?, calculated_hpp = ? WHERE batch_id = ?')
-      .bind('produced', itemsToProcess[0].productId, totalQty, Math.round(avgHpp), batchId)
+      .bind('produced', itemsToProcess[0].productId, totalQty, finalHpp, batchId)
       .run();
 
     // 2. Process each produced product output
     for (const item of itemsToProcess) {
-      // Update product avg_hpp
+      // Update product avg_hpp (applies equal HPP per unit for products from this batch)
       await db
         .prepare('UPDATE products SET avg_hpp = ? WHERE id = ?')
-        .bind(item.calculatedHpp, item.productId)
+        .bind(finalHpp, item.productId)
         .run();
 
       // Add stock to gudang
@@ -173,10 +179,10 @@ export async function PUT(request: Request) {
     const trxNum = `TRX-PROD-${Date.now().toString().slice(-6)}`;
     await db
       .prepare('INSERT INTO audit_logs (id, action, trx_number, details) VALUES (?, ?, ?, ?)')
-      .bind(`AUD-${Date.now()}`, 'PRODUCTION_COMPLETED', trxNum, `Produksi ${itemsToProcess.length} jenis produk (${totalQty} pcs) dari ${batchId}`)
+      .bind(`AUD-${Date.now()}`, 'PRODUCTION_COMPLETED', trxNum, `Produksi ${itemsToProcess.length} jenis produk (Total ${totalQty} pcs) dari ${batchId} HPP=${finalHpp}/unit`)
       .run();
 
-    return NextResponse.json({ success: true, count: itemsToProcess.length, totalQty });
+    return NextResponse.json({ success: true, count: itemsToProcess.length, totalQty, finalHpp });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

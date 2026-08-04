@@ -334,12 +334,11 @@ export default function DAPURZYApp() {
     batchId: string;
     outputs: Array<{
       productId: string;
-      allocatedCost: number;
       producedQty: number;
-      calculatedHpp: number;
     }>;
+    calculatedHpp: number;
   }) => {
-    const { batchId, outputs } = data;
+    const { batchId, outputs, calculatedHpp } = data;
     const batch = purchaseBatches.find((b) => b.batchId === batchId);
 
     if (!batch) { showToast('Batch belanja tidak ditemukan!', 'error'); return; }
@@ -352,12 +351,12 @@ export default function DAPURZYApp() {
       const res = await fetch('/api/purchases', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ batchId, outputs }),
+        body: JSON.stringify({ batchId, outputs, calculatedHpp }),
       });
       const json = await res.json();
       if (!json.success) { showToast(json.error || 'Gagal menyimpan data produksi!', 'error'); return; }
 
-      showToast(`Produksi Selesai! (${outputs.length} Jenis Produk, Total ${totalProducedQty} Pcs Tercipta)`);
+      showToast(`Produksi Selesai! HPP: ${formatRupiah(calculatedHpp)}/unit (${outputs.length} Jenis Produk, ${totalProducedQty} Pcs)`);
       setActiveModal(null);
       await loadFromD1();
     } catch (e) {
