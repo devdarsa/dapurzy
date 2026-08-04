@@ -5,6 +5,7 @@ import {
   X,
   Home,
   Users,
+  TrendingUp,
   Layers,
   PlusCircle,
   Trash2,
@@ -90,6 +91,19 @@ export default function DrawerMenu({
             >
               <Users className="w-4.5 h-4.5 text-amber-600" />
               <span>Mitra & Rekap Setoran</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('revenue');
+                onClose();
+              }}
+              className={`w-full flex items-center space-x-2.5 p-3 rounded-xl transition cursor-pointer ${
+                activeTab === 'revenue' ? 'bg-emerald-50 text-emerald-900 font-extrabold border border-emerald-200' : 'hover:bg-slate-50'
+              }`}
+            >
+              <TrendingUp className="w-4.5 h-4.5 text-emerald-600" />
+              <span>Riwayat Pendapatan & Profit</span>
             </button>
 
             <button

@@ -4,6 +4,7 @@ import React from 'react';
 import {
   Home,
   Users,
+  TrendingUp,
   Layers,
 } from 'lucide-react';
 
@@ -16,6 +17,7 @@ export default function BottomNav({ activeTab, setActiveTab }: BottomNavProps) {
   const navItems = [
     { id: 'dashboard', label: 'Beranda & Kas', icon: Home },
     { id: 'mitra', label: 'Mitra & Setoran', icon: Users },
+    { id: 'revenue', label: 'Riwayat Pendapatan', icon: TrendingUp },
     { id: 'master', label: 'Batch & Master', icon: Layers },
   ];
 

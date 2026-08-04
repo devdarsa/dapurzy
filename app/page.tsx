@@ -10,6 +10,7 @@ import PinLockScreen from '@/components/PinLockScreen';
 // Import View Components & Ultra-Lean Modules
 import DashboardModule from '@/components/modules/DashboardModule';
 import MasterModule from '@/components/modules/MasterModule';
+import RevenueHistoryModule from '@/components/modules/RevenueHistoryModule';
 
 // Import Form Modal Dialog Components
 import BatchProductionModal from '@/components/modals/BatchProductionModal';
@@ -566,6 +567,16 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
             mitras={mitras}
             sales={sales}
             onOpenModal={(modal) => setActiveModal(modal)}
+          />
+        )}
+
+        {/* TAB REVENUE HISTORY: MODAL | HASIL PRODUK | OMSET KOTOR | OMSET BERSIH */}
+        {activeTab === 'revenue' && (
+          <RevenueHistoryModule
+            purchaseBatches={purchaseBatches}
+            products={products}
+            sales={sales}
+            mitras={mitras}
           />
         )}
 
