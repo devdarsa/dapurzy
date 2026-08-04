@@ -31,7 +31,7 @@ import ResetDataModal from '@/components/modals/ResetDataModal';
 // Import Types, Helpers & Notification Engine
 import { Product, Mitra, PurchaseBatch, ProductStock, AuditLog } from '@/lib/types';
 import { formatRupiah, calculatePrecisionHpp, calculateTransactionProfit } from '@/lib/utils';
-import { requestNotificationPermission, sendLowStockNotification, getRecommendedIngredients } from '@/lib/notification';
+import { registerServiceWorkerAndRequestPermission, sendLowStockNotification, getRecommendedIngredients } from '@/lib/notification';
 
 export default function DAPURZYApp() {
   // --- STATE KEAMANAN PIN LIVE PRODUCTION (MASA AKTIF 3 HARI) ---
@@ -39,6 +39,8 @@ export default function DAPURZYApp() {
   const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
   useEffect(() => {
+    registerServiceWorkerAndRequestPermission();
+
     const savedUnlocked = sessionStorage.getItem('dapurzy_unlocked');
     const savedTimestamp = localStorage.getItem('dapurzy_unlock_timestamp');
 
@@ -58,7 +60,7 @@ export default function DAPURZYApp() {
     setIsUnlocked(true);
     sessionStorage.setItem('dapurzy_unlocked', 'true');
     localStorage.setItem('dapurzy_unlock_timestamp', Date.now().toString());
-    requestNotificationPermission();
+    registerServiceWorkerAndRequestPermission();
     showToast('Sistem DAPURZY Live Berhasil Dibuka! (Sesi Masa Aktif 3 Hari)', 'success');
   };
 
@@ -109,7 +111,7 @@ export default function DAPURZYApp() {
       id: 'AUD-LIVE-01',
       action: 'LIVE_PRODUCTION_INITIALIZED',
       trxNumber: 'SYS-LIVE-INIT',
-      details: 'DAPURZY Live System Engine Active with Hourly Low-Stock Push Alerts.',
+      details: 'DAPURZY Live System Engine Active with Smartphone System Push Alerts.',
       createdAt: new Date().toISOString(),
     },
   ]);
@@ -155,7 +157,7 @@ export default function DAPURZYApp() {
     }
   }, [cashBalance, activeCapital, products, mitras, purchaseBatches, stocks, transactions, auditLogs]);
 
-  // --- HOURLY REAL-TIME LOW-STOCK CHECKER & SMARTPHONE PUSH NOTIFICATIONS ---
+  // --- HOURLY REAL-TIME LOW-STOCK CHECKER & SMARTPHONE SYSTEM PUSH NOTIFICATIONS ---
   useEffect(() => {
     const checkLowStockAlerts = () => {
       products.forEach((p) => {
