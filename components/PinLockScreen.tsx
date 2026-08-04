@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lock, AlertCircle, ShieldCheck, Loader2 } from 'lucide-react';
 
 interface PinLockScreenProps {
@@ -60,6 +60,23 @@ export default function PinLockScreen({ onUnlockSuccess }: PinLockScreenProps) {
     setEnteredPin('');
     setErrorMsg('');
   };
+
+  // Keyboard Event Listener for Physical Keyboard (PC/Laptop)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isVerifying) return;
+      if (e.key >= '0' && e.key <= '9') {
+        handleKeyPress(e.key);
+      } else if (e.key === 'Backspace') {
+        handleBackspace();
+      } else if (e.key === 'Escape' || e.key.toLowerCase() === 'c') {
+        handleClear();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [enteredPin, isVerifying]);
 
   return (
     <div className="fixed inset-0 z-50 bg-gradient-to-b from-slate-900 via-emerald-950 to-slate-950 text-white flex items-center justify-center p-4 select-none">
