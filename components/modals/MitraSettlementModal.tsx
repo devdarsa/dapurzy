@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import ModalWrapper from '../ModalWrapper';
 import { Product, Mitra } from '@/lib/types';
 import { formatRupiah, formatNumberWithDots, parseFormattedNumber } from '@/lib/utils';
@@ -29,16 +29,25 @@ export default function MitraSettlementModal({
   mitras,
   onSubmit,
 }: MitraSettlementModalProps) {
-  const [selectedMitraId, setSelectedMitraId] = useState<string>(mitras[0]?.id || '');
-  const [selectedProductId, setSelectedProductId] = useState<string>(products[0]?.id || '');
+  const [selectedMitraId, setSelectedMitraId] = useState<string>('');
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [titipQtyInput, setTitipQtyInput] = useState<string>('40');
   const [returnedQtyInput, setReturnedQtyInput] = useState<string>('0');
   const [paymentMethod, setPaymentMethod] = useState<string>('CASH');
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (isOpen) {
+      if (mitras.length > 0 && !selectedMitraId) {
+        setSelectedMitraId(mitras[0].id);
+      }
+      if (products.length > 0 && !selectedProductId) {
+        setSelectedProductId(products[0].id);
+      }
+    }
+  }, [isOpen, mitras, products, selectedMitraId, selectedProductId]);
 
-  const selectedMitra = mitras.find((m) => m.id === selectedMitraId) || mitras[0];
-  const selectedProduct = products.find((p) => p.id === selectedProductId) || products[0];
+  const selectedMitra = useMemo(() => mitras.find((m) => m.id === selectedMitraId) || mitras[0], [mitras, selectedMitraId]);
+  const selectedProduct = useMemo(() => products.find((p) => p.id === selectedProductId) || products[0], [products, selectedProductId]);
 
   // Resolve custom price for this mitra if exists, otherwise fallback to master product price
   const effectivePrice = useMemo(() => {
@@ -51,6 +60,8 @@ export default function MitraSettlementModal({
     }
     return selectedProduct.price || 0;
   }, [selectedMitra, selectedProduct]);
+
+  if (!isOpen) return null;
 
   const titipQty = parseFormattedNumber(titipQtyInput);
   const returnedQty = parseFormattedNumber(returnedQtyInput);
