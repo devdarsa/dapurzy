@@ -33,7 +33,7 @@ import { Product, Mitra, PurchaseBatch, ProductStock, AuditLog } from '@/lib/typ
 import { formatRupiah, calculatePrecisionHpp, calculateTransactionProfit } from '@/lib/utils';
 
 export default function DAPURZYApp() {
-  // --- STATE KEAMANAN PIN (Default: 250420) ---
+  // --- STATE KEAMANAN PIN LIVE PRODUCTION ---
   const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
 
   useEffect(() => {
@@ -43,10 +43,10 @@ export default function DAPURZYApp() {
     }
   }, []);
 
-  const handleUnlockSuccess = () => {
+  const handleUnlockSuccess = (pin: string) => {
     setIsUnlocked(true);
     sessionStorage.setItem('dapurzy_unlocked', 'true');
-    showToast('Aplikasi Berhasil Dibuka dengan PIN!', 'success');
+    showToast('Sistem DAPURZY Live Berhasil Dibuka!', 'success');
   };
 
   const handleLockApp = () => {
@@ -67,107 +67,32 @@ export default function DAPURZYApp() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingMitra, setEditingMitra] = useState<Mitra | null>(null);
 
-  // --- STATE UTAMA APLIKASI ---
-  const [cashBalance, setCashBalance] = useState<number>(2850000);
-  const [activeCapital, setActiveCapital] = useState<number>(5000000);
+  // --- STATE LIVE PRODUCTION (BERSIH TOTAL 0 DATA UJI COBA) ---
+  const [cashBalance, setCashBalance] = useState<number>(0);
+  const [activeCapital, setActiveCapital] = useState<number>(0);
 
-  // Master Produk
-  const [products, setProducts] = useState<Product[]>([
-    { id: 'P-01', name: 'Es Lilin Cokelat', category: 'Es Lilin', price: 2500, avgHpp: 1000, status: 'active' },
-    { id: 'P-02', name: 'Es Lilin Durian', category: 'Es Lilin', price: 3000, avgHpp: 1200, status: 'active' },
-    { id: 'P-03', name: 'Udang Keju Crisp', category: 'Udang Keju', price: 15000, avgHpp: 8500, status: 'active' },
-    { id: 'P-04', name: 'Bakso Bakar Jumbo', category: 'Bakso Bakar', price: 10000, avgHpp: 5000, status: 'active' },
-  ]);
+  // Master Produk (Bersih)
+  const [products, setProducts] = useState<Product[]>([]);
 
-  // Master Mitra
-  const [mitras, setMitras] = useState<Mitra[]>([
-    { id: 'M-01', name: 'Warung Bu Sri', type: 'Warung', whatsapp: '081234567890', address: 'Jl. Mawar No. 12', status: 'active' },
-    { id: 'M-02', name: 'Kantin SD 01', type: 'Kantin', whatsapp: '089876543210', address: 'Kantin Sekolah SD 01', status: 'active' },
-    { id: 'M-03', name: 'Agen Reseller Mas Budi', type: 'Reseller', whatsapp: '085712345678', address: 'Perum Gria Indah B3', status: 'active' },
-  ]);
+  // Master Mitra (Bersih)
+  const [mitras, setMitras] = useState<Mitra[]>([]);
 
-  // DATA BATCH BELANJA BAHAN BAKU (Single Source of Truth HPP)
-  const [purchaseBatches, setPurchaseBatches] = useState<PurchaseBatch[]>([
-    {
-      id: 'PB-1',
-      batchId: 'BATCH-2026-001',
-      date: new Date(Date.now() - 172800000).toISOString(),
-      itemsDescription: 'Susu Kental, Cokelat Bubuk, Plastik Es, Gas 3kg',
-      totalCost: 200000,
-      supplier: 'Toko Bahan Kue Mulia',
-      status: 'produced',
-      productId: 'P-01',
-      producedQty: 200,
-      calculatedHpp: 1000,
-    },
-    {
-      id: 'PB-2',
-      batchId: 'BATCH-2026-002',
-      date: new Date(Date.now() - 86400000).toISOString(),
-      itemsDescription: 'Udang Segar 2kg, Keju Mozzarella, Tepung Panir, Minyak',
-      totalCost: 255000,
-      supplier: 'Pasar Cihapit',
-      status: 'produced',
-      productId: 'P-03',
-      producedQty: 30,
-      calculatedHpp: 8500,
-    },
-    {
-      id: 'PB-3',
-      batchId: 'BATCH-2026-003',
-      date: new Date().toISOString(),
-      itemsDescription: 'Buah Durian Daging 3kg, Gula Pasir, Kemasan',
-      totalCost: 180000,
-      supplier: 'Grosir Buah Segar',
-      status: 'pending_production',
-      productId: null,
-      producedQty: 0,
-      calculatedHpp: 0,
-    },
-  ]);
+  // Batch Belanja Bahan Baku (Bersih)
+  const [purchaseBatches, setPurchaseBatches] = useState<PurchaseBatch[]>([]);
 
-  // Stok Per Lokasi (Gudang & Mitra)
-  const [stocks, setStocks] = useState<ProductStock[]>([
-    { id: 'S-1', productId: 'P-01', locationType: 'gudang', mitraId: null, quantity: 120 },
-    { id: 'S-2', productId: 'P-02', locationType: 'gudang', mitraId: null, quantity: 50 },
-    { id: 'S-3', productId: 'P-03', locationType: 'gudang', mitraId: null, quantity: 20 },
-    { id: 'S-4', productId: 'P-01', locationType: 'mitra', mitraId: 'M-01', quantity: 50 },
-    { id: 'S-5', productId: 'P-03', locationType: 'mitra', mitraId: 'M-02', quantity: 10 },
-  ]);
+  // Stok Per Lokasi (Bersih)
+  const [stocks, setStocks] = useState<ProductStock[]>([]);
 
-  // Riwayat Transaksi Aktivitas
-  const [transactions, setTransactions] = useState<any[]>([
-    {
-      id: 'TRX-101',
-      trxNumber: 'TRX-2026-001',
-      date: new Date().toISOString(),
-      type: 'PENJUALAN',
-      title: 'Penjualan Direct Gudang',
-      detail: '10x Udang Keju Crisp (HPP Rp 8.500)',
-      amount: 150000,
-      profit: 65000,
-      category: 'in',
-    },
-    {
-      id: 'TRX-102',
-      trxNumber: 'TRX-2026-002',
-      date: new Date().toISOString(),
-      type: 'BELANJA',
-      title: 'Belanja Bahan Baku BATCH-2026-003',
-      detail: 'Durian Daging 3kg, Gula, Plastik',
-      amount: 180000,
-      profit: 0,
-      category: 'out',
-    },
-  ]);
+  // Riwayat Transaksi Aktivitas (Bersih)
+  const [transactions, setTransactions] = useState<any[]>([]);
 
-  // Log Audit Trail
+  // Log Audit Trail Live
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
     {
-      id: 'AUD-01',
-      action: 'SYSTEM_INIT',
-      trxNumber: 'SYS-00',
-      details: 'DAPURZY Blueprint v1.2 Modular Engine Initialized with PIN 250420',
+      id: 'AUD-LIVE-01',
+      action: 'LIVE_PRODUCTION_INITIALIZED',
+      trxNumber: 'SYS-LIVE-INIT',
+      details: 'DAPURZY Live System Engine Active. Clean zero state.',
       createdAt: new Date().toISOString(),
     },
   ]);
@@ -813,9 +738,9 @@ export default function DAPURZYApp() {
     setActiveModal(null);
   };
 
-  // IF PIN IS LOCKED, DISPLAY PIN LOCK SCREEN OVERLAY (PIN DEFAULT: 250420)
+  // IF PIN IS LOCKED, DISPLAY PIN LOCK SCREEN OVERLAY
   if (!isUnlocked) {
-    return <PinLockScreen correctPin="250420" onUnlockSuccess={handleUnlockSuccess} />;
+    return <PinLockScreen onUnlockSuccess={handleUnlockSuccess} />;
   }
 
   return (

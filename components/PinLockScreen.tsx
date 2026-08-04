@@ -1,19 +1,25 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Lock, Unlock, KeyRound, AlertCircle } from 'lucide-react';
+import { Lock, KeyRound, AlertCircle, ShieldCheck } from 'lucide-react';
 
 interface PinLockScreenProps {
-  correctPin?: string; // Default: '250420'
-  onUnlockSuccess: () => void;
+  onUnlockSuccess: (pin: string) => void;
 }
 
-export default function PinLockScreen({
-  correctPin = '250420',
-  onUnlockSuccess,
-}: PinLockScreenProps) {
+export default function PinLockScreen({ onUnlockSuccess }: PinLockScreenProps) {
+  // Check if PIN has already been setup by user
+  const savedPin = typeof window !== 'undefined' ? localStorage.getItem('dapurzy_user_pin') : null;
+  const isFirstTimeSetup = !savedPin;
+
   const [enteredPin, setEnteredPin] = useState<string>('');
+  const [confirmPinSetup, setConfirmPinSetup] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [infoMsg, setInfoMsg] = useState<string>(
+    isFirstTimeSetup
+      ? 'Mode Live: Silakan Buat 6-Digit PIN Keamanan Akun Pertama Kali'
+      : 'Masukkan 6-Digit PIN Keamanan Akun Anda'
+  );
 
   const handleKeyPress = (num: string) => {
     if (enteredPin.length < 6) {
@@ -22,11 +28,32 @@ export default function PinLockScreen({
       setErrorMsg('');
 
       if (nextPin.length === 6) {
-        if (nextPin === correctPin) {
-          onUnlockSuccess();
+        if (isFirstTimeSetup) {
+          if (!confirmPinSetup) {
+            // First step of PIN creation: Ask to re-enter
+            setConfirmPinSetup(nextPin);
+            setEnteredPin('');
+            setInfoMsg('Konfirmasi Ulang 6-Digit PIN Baru Anda');
+          } else {
+            // Second step: Match pins
+            if (nextPin === confirmPinSetup) {
+              localStorage.setItem('dapurzy_user_pin', nextPin);
+              onUnlockSuccess(nextPin);
+            } else {
+              setErrorMsg('PIN Konfirmasi Tidak Cocok! Silakan Ulangi.');
+              setConfirmPinSetup(null);
+              setInfoMsg('Mode Live: Silakan Buat 6-Digit PIN Keamanan Akun Pertama Kali');
+              setTimeout(() => setEnteredPin(''), 600);
+            }
+          }
         } else {
-          setErrorMsg('PIN Salah! Silakan coba lagi.');
-          setTimeout(() => setEnteredPin(''), 600);
+          // Unlock verification
+          if (nextPin === savedPin) {
+            onUnlockSuccess(nextPin);
+          } else {
+            setErrorMsg('PIN Salah! Silakan Coba Lagi.');
+            setTimeout(() => setEnteredPin(''), 600);
+          }
         }
       }
     }
@@ -59,10 +86,13 @@ export default function PinLockScreen({
           </div>
 
           <div>
-            <h1 className="font-extrabold text-lg sm:text-xl text-white tracking-wide">
-              DAPURZY <span className="text-amber-400 text-xs">v1.2</span>
+            <h1 className="font-extrabold text-lg sm:text-xl text-white tracking-wide flex items-center justify-center gap-1.5">
+              DAPURZY{' '}
+              <span className="text-[9px] bg-emerald-500 text-emerald-950 font-black px-1.5 py-0.2 rounded uppercase">
+                LIVE PRODUCTION
+              </span>
             </h1>
-            <p className="text-xs text-emerald-200 font-medium">Sistem Keamanan Akses PIN</p>
+            <p className="text-xs text-emerald-200 font-medium">Keamanan Akun & Sistem Pembukuan Live</p>
           </div>
         </div>
 
@@ -87,7 +117,10 @@ export default function PinLockScreen({
               <span>{errorMsg}</span>
             </p>
           ) : (
-            <p className="text-[11px] text-slate-400">Masukkan 6-Digit PIN Keamanan (Default: 250420)</p>
+            <p className="text-[11px] font-bold text-amber-300 flex items-center justify-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+              <span>{infoMsg}</span>
+            </p>
           )}
         </div>
 
