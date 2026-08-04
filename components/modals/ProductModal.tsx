@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import ModalWrapper from '../ModalWrapper';
 import { Product } from '@/lib/types';
 import { formatNumberWithDots, parseFormattedNumber } from '@/lib/utils';
@@ -8,6 +8,7 @@ import { formatNumberWithDots, parseFormattedNumber } from '@/lib/utils';
 interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
+  products?: Product[];
   initialData?: Product | null;
   onSubmit: (data: { id?: string; name: string; category: string; price: number }) => void;
 }
@@ -15,37 +16,59 @@ interface ProductModalProps {
 export default function ProductModal({
   isOpen,
   onClose,
+  products = [],
   initialData,
   onSubmit,
 }: ProductModalProps) {
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('Es Lilin');
+  const [selectedCategory, setSelectedCategory] = useState('Es Lilin');
+  const [customCategory, setCustomCategory] = useState('');
   const [priceInput, setPriceInput] = useState('');
+
+  // Extract unique existing categories automatically
+  const existingCategories = useMemo(() => {
+    const set = new Set(['Es Lilin', 'Udang Keju', 'Bakso Bakar', 'Snack', 'Minuman', 'Bahan Baku']);
+    products.forEach((p) => {
+      if (p.category) set.add(p.category);
+    });
+    return Array.from(set);
+  }, [products]);
 
   useEffect(() => {
     if (initialData) {
       setName(initialData.name);
-      setCategory(initialData.category);
+      if (existingCategories.includes(initialData.category)) {
+        setSelectedCategory(initialData.category);
+        setCustomCategory('');
+      } else {
+        setSelectedCategory('__NEW__');
+        setCustomCategory(initialData.category);
+      }
       setPriceInput(formatNumberWithDots(initialData.price));
     } else {
       setName('');
-      setCategory('Es Lilin');
+      setSelectedCategory(existingCategories[0] || 'Es Lilin');
+      setCustomCategory('');
       setPriceInput('');
     }
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, existingCategories]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const finalCategory =
+      selectedCategory === '__NEW__' ? customCategory.trim() || 'Umum' : selectedCategory;
     const rawPrice = parseFormattedNumber(priceInput);
+
     onSubmit({
       id: initialData?.id,
       name,
-      category,
+      category: finalCategory,
       price: rawPrice,
     });
     setName('');
+    setCustomCategory('');
     setPriceInput('');
   };
 
@@ -73,16 +96,34 @@ export default function ProductModal({
         </div>
 
         <div>
-          <label className="block font-bold text-slate-700 mb-1">Kategori Produk</label>
-          <input
-            type="text"
-            required
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            placeholder="e.g. Es Lilin, Udang Keju, Dimsum"
-            className="w-full p-2.5 sm:p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-purple-500 outline-none"
-          />
+          <label className="block font-bold text-slate-700 mb-1">Kategori Produk (Dropdown)</label>
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="w-full p-2.5 sm:p-3 rounded-xl border border-slate-300 font-bold text-slate-800 focus:ring-2 focus:ring-purple-500 outline-none"
+          >
+            {existingCategories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+            <option value="__NEW__">➕ Tambah Kategori Baru...</option>
+          </select>
         </div>
+
+        {selectedCategory === '__NEW__' && (
+          <div className="p-2.5 bg-purple-50 rounded-xl border border-purple-200">
+            <label className="block font-bold text-purple-900 mb-1">Nama Kategori Baru</label>
+            <input
+              type="text"
+              required
+              value={customCategory}
+              onChange={(e) => setCustomCategory(e.target.value)}
+              placeholder="Ketik nama kategori baru..."
+              className="w-full p-2.5 rounded-xl border border-purple-300 font-bold focus:ring-2 focus:ring-purple-500 outline-none"
+            />
+          </div>
+        )}
 
         <div>
           <label className="block font-bold text-slate-700 mb-1">Harga Jual Produk (Rp)</label>

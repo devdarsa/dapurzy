@@ -44,7 +44,6 @@ export default function DAPURZYApp() {
     if (savedUnlocked === 'true' && savedTimestamp) {
       const elapsed = Date.now() - Number(savedTimestamp);
       if (elapsed > THREE_DAYS_MS) {
-        // 3 Days Expiration Limit Reached: Automatic Logout
         handleLockApp();
       } else {
         setIsUnlocked(true);
@@ -66,7 +65,6 @@ export default function DAPURZYApp() {
     sessionStorage.clear();
     localStorage.removeItem('dapurzy_unlock_timestamp');
 
-    // Wipe PWA Browser Cache on Logout to force fresh bundle update
     if (typeof window !== 'undefined' && 'caches' in window) {
       try {
         const cacheNames = await caches.keys();
@@ -96,7 +94,7 @@ export default function DAPURZYApp() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingMitra, setEditingMitra] = useState<Mitra | null>(null);
 
-  // --- STATE LIVE PRODUCTION ---
+  // --- STATE LIVE PRODUCTION WITH FULL LOCALSTORAGE PERSISTENCE ---
   const [cashBalance, setCashBalance] = useState<number>(0);
   const [activeCapital, setActiveCapital] = useState<number>(0);
   const [products, setProducts] = useState<Product[]>([]);
@@ -104,17 +102,56 @@ export default function DAPURZYApp() {
   const [purchaseBatches, setPurchaseBatches] = useState<PurchaseBatch[]>([]);
   const [stocks, setStocks] = useState<ProductStock[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
-
-  // Log Audit Trail Live
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
     {
       id: 'AUD-LIVE-01',
       action: 'LIVE_PRODUCTION_INITIALIZED',
       trxNumber: 'SYS-LIVE-INIT',
-      details: 'DAPURZY Live System Engine Active with 3-Day PIN Session Expiry.',
+      details: 'DAPURZY Live System Engine Active with LocalStorage Persistence.',
       createdAt: new Date().toISOString(),
     },
   ]);
+
+  // Load state from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedCash = localStorage.getItem('dapurzy_cash_balance');
+      const savedCapital = localStorage.getItem('dapurzy_active_capital');
+      const savedProds = localStorage.getItem('dapurzy_products');
+      const savedMitras = localStorage.getItem('dapurzy_mitras');
+      const savedBatches = localStorage.getItem('dapurzy_purchase_batches');
+      const savedStocks = localStorage.getItem('dapurzy_stocks');
+      const savedTrxs = localStorage.getItem('dapurzy_transactions');
+      const savedLogs = localStorage.getItem('dapurzy_audit_logs');
+
+      if (savedCash !== null) setCashBalance(Number(savedCash));
+      if (savedCapital !== null) setActiveCapital(Number(savedCapital));
+      if (savedProds) setProducts(JSON.parse(savedProds));
+      if (savedMitras) setMitras(JSON.parse(savedMitras));
+      if (savedBatches) setPurchaseBatches(JSON.parse(savedBatches));
+      if (savedStocks) setStocks(JSON.parse(savedStocks));
+      if (savedTrxs) setTransactions(JSON.parse(savedTrxs));
+      if (savedLogs) setAuditLogs(JSON.parse(savedLogs));
+    } catch (e) {
+      console.error('Failed to load state from localStorage', e);
+    }
+  }, []);
+
+  // Save state to localStorage on state changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('dapurzy_cash_balance', cashBalance.toString());
+      localStorage.setItem('dapurzy_active_capital', activeCapital.toString());
+      localStorage.setItem('dapurzy_products', JSON.stringify(products));
+      localStorage.setItem('dapurzy_mitras', JSON.stringify(mitras));
+      localStorage.setItem('dapurzy_purchase_batches', JSON.stringify(purchaseBatches));
+      localStorage.setItem('dapurzy_stocks', JSON.stringify(stocks));
+      localStorage.setItem('dapurzy_transactions', JSON.stringify(transactions));
+      localStorage.setItem('dapurzy_audit_logs', JSON.stringify(auditLogs));
+    } catch (e) {
+      console.error('Failed to save state to localStorage', e);
+    }
+  }, [cashBalance, activeCapital, products, mitras, purchaseBatches, stocks, transactions, auditLogs]);
 
   // SHOW TOAST MESSAGE
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -182,7 +219,7 @@ export default function DAPURZYApp() {
 
   // --- HANDLER BUSINESS LOGIC ---
 
-  // 1. Tambah Belanja Bahan Baku
+  // 1. Tambah Belanja Bahan Baku (Mengurangi Kas Operasional Modal)
   const handleCreatePurchaseBatch = (data: { itemsDescription: string; totalCost: number; supplier: string }) => {
     const { itemsDescription, totalCost, supplier } = data;
 
@@ -192,7 +229,7 @@ export default function DAPURZYApp() {
     }
 
     if (cashBalance < totalCost) {
-      showToast('Saldo Kas Operasional tidak mencukupi untuk belanja ini!', 'error');
+      showToast(`Saldo Kas (Rp ${formatRupiah(cashBalance)}) tidak mencukupi untuk belanja Rp ${formatRupiah(totalCost)}!`, 'error');
       return;
     }
 
@@ -230,7 +267,7 @@ export default function DAPURZYApp() {
 
     setTransactions((prev) => [newTrx, ...prev]);
     addAuditLog('PURCHASE_BATCH_CREATED', trxNumber, `Created batch ${batchId} cost ${formatRupiah(totalCost)}`);
-    showToast(`Batch Belanja ${batchId} berhasil dicatat!`);
+    showToast(`Batch Belanja ${batchId} Rp ${formatRupiah(totalCost)} berhasil dicatat! Sisa kas terupdate.`);
     setActiveModal(null);
   };
 
@@ -587,7 +624,7 @@ export default function DAPURZYApp() {
     setActiveModal(null);
   };
 
-  // 6. Injeksi Modal
+  // 6. Injeksi Modal (Menambah Saldo Kas & Modal Aktif yang Tersimpan Permanen)
   const handleCapital = (data: { amount: number; note: string }) => {
     const { amount, note } = data;
     if (amount <= 0) {
@@ -613,7 +650,7 @@ export default function DAPURZYApp() {
 
     setTransactions((prev) => [newTrx, ...prev]);
     addAuditLog('CAPITAL_INJECTED', trxNumber, `Injected capital ${formatRupiah(amount)}. Note: ${note}`);
-    showToast(`Injeksi modal ${formatRupiah(amount)} berhasil!`);
+    showToast(`Injeksi modal ${formatRupiah(amount)} berhasil disimpan permanen!`);
     setActiveModal(null);
   };
 
@@ -645,7 +682,7 @@ export default function DAPURZYApp() {
       };
       setProducts((prev) => [...prev, newProduct]);
       addAuditLog('PRODUCT_CREATED', newProduct.id, `Created new product ${data.name}`);
-      showToast(`Produk master "${data.name}" berhasil ditambahkan!`);
+      showToast(`Produk master "${data.name}" (Kategori: ${data.category}) berhasil ditambahkan!`);
     }
 
     setEditingProduct(null);
@@ -753,6 +790,16 @@ export default function DAPURZYApp() {
         createdAt: new Date().toISOString(),
       },
     ]);
+
+    localStorage.removeItem('dapurzy_cash_balance');
+    localStorage.removeItem('dapurzy_active_capital');
+    localStorage.removeItem('dapurzy_products');
+    localStorage.removeItem('dapurzy_mitras');
+    localStorage.removeItem('dapurzy_purchase_batches');
+    localStorage.removeItem('dapurzy_stocks');
+    localStorage.removeItem('dapurzy_transactions');
+    localStorage.removeItem('dapurzy_audit_logs');
+
     showToast('Seluruh data aplikasi berhasil dihapus 100%! Sistem telah bersih total.', 'success');
     setActiveModal(null);
   };
@@ -934,6 +981,7 @@ export default function DAPURZYApp() {
           setActiveModal(null);
           setEditingProduct(null);
         }}
+        products={products}
         initialData={editingProduct}
         onSubmit={handleSaveProduct}
       />
