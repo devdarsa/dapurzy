@@ -127,7 +127,7 @@ export default function BatchProductionModal({
 
   return (
     <ModalWrapper title="📦 Belanja Bahan & Input Produksi Batch" onClose={onClose}>
-      <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm max-h-[80vh] overflow-y-auto pr-1">
+      <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm pb-4">
         {/* 1. Belanja Bahan */}
         <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-3.5 space-y-3">
           <h3 className="font-extrabold text-emerald-900 flex items-center gap-1.5 text-xs sm:text-sm">

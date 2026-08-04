@@ -127,7 +127,7 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
 
   return (
     <ModalWrapper title="🤝 Rekap Setoran Mitra Titipan" onClose={onClose}>
-      <form onSubmit={handleSubmit} className="space-y-3.5 text-xs sm:text-sm max-h-[80vh] overflow-y-auto pr-1">
+      <form onSubmit={handleSubmit} className="space-y-3.5 text-xs sm:text-sm pb-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block font-bold text-slate-700 mb-1">Pilih Mitra Titipan</label>
