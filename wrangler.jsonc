@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "dapurzy",
-  "account_id": "8fbec9295bb9a9580cb756a860e19c9e",
+  "account_id": "b8f91def3d949c153a0d2bdfebd2b8c1",
   "compatibility_date": "2024-09-23",
   "compatibility_flags": [
     "nodejs_compat"
@@ -10,7 +10,7 @@
     {
       "binding": "DB",
       "database_name": "db_dapurzy",
-      "database_id": "36ecf251-f6bb-4d89-abcb-2adae2b84baf"
+      "database_id": "d27c12c2-ee79-4344-9a73-8c4aced98236"
     }
   ]
 }
