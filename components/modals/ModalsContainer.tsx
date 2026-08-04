@@ -93,6 +93,8 @@ export default function ModalsContainer({
         mitras={mitras}
         products={products}
         stocks={stocks}
+        onOpenMitraModal={() => onOpenModal && onOpenModal('mitra')}
+        onOpenProductModal={() => onOpenModal && onOpenModal('product')}
         onSubmit={onAmbilMitra}
       />
 
@@ -101,12 +103,16 @@ export default function ModalsContainer({
         onClose={onClose}
         products={products}
         mitras={mitras}
+        onOpenMitraModal={() => onOpenModal && onOpenModal('mitra')}
+        onOpenProductModal={() => onOpenModal && onOpenModal('product')}
         onSubmit={onMitraSettlement}
       />
 
       <HomeSalesModal
         isOpen={activeModal === 'home_sales'}
         onClose={onClose}
+        products={products}
+        onOpenProductModal={() => onOpenModal && onOpenModal('product')}
         onSubmit={onHomeSalesDeposit}
       />
 

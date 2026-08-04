@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import ModalWrapper from '../ModalWrapper';
 import { Mitra, Product, ProductStock } from '@/lib/types';
 import { formatRupiah, formatNumberWithDots, parseFormattedNumber } from '@/lib/utils';
-import { Truck, Package, AlertCircle } from 'lucide-react';
+import { Truck, Package, AlertCircle, PlusCircle } from 'lucide-react';
 
 interface AmbilMitraModalProps {
   isOpen: boolean;
@@ -12,6 +12,8 @@ interface AmbilMitraModalProps {
   mitras: Mitra[];
   products: Product[];
   stocks: ProductStock[];
+  onOpenMitraModal?: () => void;
+  onOpenProductModal?: () => void;
   onSubmit: (data: {
     mitraId: string;
     productId: string;
@@ -26,6 +28,8 @@ export default function AmbilMitraModal({
   mitras,
   products,
   stocks,
+  onOpenMitraModal,
+  onOpenProductModal,
   onSubmit,
 }: AmbilMitraModalProps) {
   const [selectedMitraId, setSelectedMitraId] = useState<string>('');
@@ -91,14 +95,60 @@ export default function AmbilMitraModal({
 
   return (
     <ModalWrapper title="🚚 Modul Ambil Produk Mitra (Titip Barang)" onClose={onClose}>
-      <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
-        {mitras.length === 0 ? (
-          <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-center space-y-2">
-            <AlertCircle className="w-8 h-8 text-amber-600 mx-auto" />
-            <h4 className="font-extrabold text-amber-900 text-sm">Belum Ada Data Mitra</h4>
-            <p className="text-xs text-amber-700">Silakan tambahkan data Mitra terlebih dahulu di Master Data!</p>
+      {mitras.length === 0 ? (
+        /* POPUP BOUNCY ELEGAN JIKA BELUM ADA MITRA */
+        <div className="bg-gradient-to-br from-amber-500/10 via-amber-400/5 to-amber-500/20 border-2 border-amber-400/60 p-6 rounded-3xl text-center space-y-3.5 my-3 shadow-xl animate-in zoom-in-95 duration-300 relative overflow-hidden backdrop-blur-xs">
+          <div className="w-14 h-14 bg-gradient-to-tr from-amber-500 to-amber-400 text-amber-950 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-amber-500/30 animate-bounce">
+            <AlertCircle className="w-8 h-8 stroke-[2.5]" />
           </div>
-        ) : (
+          <div>
+            <h4 className="font-black text-amber-950 text-base sm:text-lg tracking-tight">Belum Ada Data Mitra Titipan!</h4>
+            <p className="text-xs font-semibold text-amber-900/80 mt-1 max-w-xs mx-auto leading-relaxed">
+              Anda belum mendaftarkan Warung atau Kantin Mitra. Daftarkan Mitra pertama Anda terlebih dahulu untuk pengambilan barang!
+            </p>
+          </div>
+          {onOpenMitraModal && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenMitraModal();
+              }}
+              className="w-full sm:w-auto bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black text-xs sm:text-sm px-6 py-3.5 rounded-2xl shadow-lg shadow-amber-500/30 active:scale-95 transition transform cursor-pointer flex items-center justify-center gap-2 mx-auto mt-2"
+            >
+              <PlusCircle className="w-4 h-4 stroke-[3]" />
+              <span>+ Tambah Mitra Baru Sekarang</span>
+            </button>
+          )}
+        </div>
+      ) : products.length === 0 ? (
+        /* POPUP BOUNCY ELEGAN JIKA BELUM ADA PRODUK */
+        <div className="bg-gradient-to-br from-purple-500/10 via-purple-400/5 to-purple-500/20 border-2 border-purple-400/60 p-6 rounded-3xl text-center space-y-3.5 my-3 shadow-xl animate-in zoom-in-95 duration-300 relative overflow-hidden backdrop-blur-xs">
+          <div className="w-14 h-14 bg-gradient-to-tr from-purple-600 to-purple-500 text-white rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-purple-500/30 animate-bounce">
+            <AlertCircle className="w-8 h-8 stroke-[2.5]" />
+          </div>
+          <div>
+            <h4 className="font-black text-purple-950 text-base sm:text-lg tracking-tight">Belum Ada Master Produk!</h4>
+            <p className="text-xs font-semibold text-purple-900/80 mt-1 max-w-xs mx-auto leading-relaxed">
+              Belum ada produk yang didaftarkan. Daftarkan Produk pertama Anda untuk mulai pengambilan!
+            </p>
+          </div>
+          {onOpenProductModal && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenProductModal();
+              }}
+              className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-black text-xs sm:text-sm px-6 py-3.5 rounded-2xl shadow-lg shadow-purple-500/30 active:scale-95 transition transform cursor-pointer flex items-center justify-center gap-2 mx-auto mt-2"
+            >
+              <PlusCircle className="w-4 h-4 stroke-[3]" />
+              <span>+ Tambah Master Produk Sekarang</span>
+            </button>
+          )}
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
           <>
             {/* 1. Pilih Mitra */}
             <div>
@@ -186,8 +236,8 @@ export default function AmbilMitraModal({
               📦 Simpan Pengambilan Mitra & Kurangi Stok Gudang
             </button>
           </>
-        )}
-      </form>
+        </form>
+      )}
     </ModalWrapper>
   );
 }

@@ -66,13 +66,17 @@ export default function BelanjaBatchModal({
     <>
       <ModalWrapper title="🛒 Modul Belanja (Buat Batch Belanja)" onClose={onClose}>
         {operatingCapital <= 0 ? (
-          /* POPUP WARNING JIKA BELUM ADA MODAL */
-          <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl text-center space-y-3 my-2">
-            <AlertCircle className="w-10 h-10 text-amber-600 mx-auto" />
-            <h4 className="font-extrabold text-amber-900 text-sm sm:text-base">Saldo Kas Modal Usaha Kosong (Rp 0)</h4>
-            <p className="text-xs text-amber-700 leading-relaxed max-w-xs mx-auto">
-              Belum ada saldo Kas Modal untuk belanja. Silakan lakukan <b>Injeksi Modal Usaha</b> terlebih dahulu sebelum membuat Batch Belanja!
-            </p>
+          /* POPUP BOUNCY ELEGAN JIKA BELUM ADA KAS MODAL */
+          <div className="bg-gradient-to-br from-amber-500/10 via-amber-400/5 to-amber-500/20 border-2 border-amber-400/60 p-6 rounded-3xl text-center space-y-3.5 my-3 shadow-xl animate-in zoom-in-95 duration-300 relative overflow-hidden backdrop-blur-xs">
+            <div className="w-14 h-14 bg-gradient-to-tr from-amber-500 to-amber-400 text-amber-950 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-amber-500/30 animate-bounce">
+              <AlertCircle className="w-8 h-8 stroke-[2.5]" />
+            </div>
+            <div>
+              <h4 className="font-black text-amber-950 text-base sm:text-lg tracking-tight">Saldo Kas Modal Usaha Kosong (Rp 0)!</h4>
+              <p className="text-xs font-semibold text-amber-900/80 mt-1 max-w-xs mx-auto leading-relaxed">
+                Belum ada saldo Kas Modal untuk belanja. Silakan lakukan <b>Injeksi Modal Usaha</b> terlebih dahulu sebelum membuat Batch Belanja!
+              </p>
+            </div>
             {onOpenCapitalModal && (
               <button
                 type="button"
@@ -80,9 +84,9 @@ export default function BelanjaBatchModal({
                   onClose();
                   onOpenCapitalModal();
                 }}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md transition cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 mx-auto mt-2"
+                className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black text-xs sm:text-sm px-6 py-3.5 rounded-2xl shadow-lg shadow-emerald-600/30 active:scale-95 transition transform cursor-pointer flex items-center justify-center gap-2 mx-auto mt-2"
               >
-                <PlusCircle className="w-4 h-4" />
+                <PlusCircle className="w-4 h-4 stroke-[3]" />
                 <span>+ Injeksi Kas Modal Sekarang</span>
               </button>
             )}
