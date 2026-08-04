@@ -462,10 +462,9 @@ Terima kasih atas kerjasamanya! 🙏`;
         </div>
       )}
 
-      {/* HEADER UTAMA APP (DENGAN LOCK BUTTON DIRECT DI HEADER, TANPA SIDEBAR) */}
+      {/* HEADER UTAMA APP (ULTRA-CLEAN WITH LOCK BUTTON ONLY) */}
       <Navbar
         onLockApp={handleLockApp}
-        onOpenPurchaseModal={() => setActiveModal('belanja_batch')}
       />
 
       {/* MAIN CONTENT AREA */}
@@ -528,8 +527,12 @@ Terima kasih atas kerjasamanya! 🙏`;
         )}
       </main>
 
-      {/* BOTTOM NAVIGATION BAR */}
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+      {/* BOTTOM NAVIGATION BAR WITH FLOATING ACTION BUTTON (+ BELANJA) */}
+      <BottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenPurchaseModal={() => setActiveModal('belanja_batch')}
+      />
 
       {/* FORM MODAL DIALOGS CONTAINER */}
       <ModalsContainer
