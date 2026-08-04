@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, batchId, itemsDescription, totalCost, supplier } = body;
+    const { id, batchId, itemsDescription, totalCost, supplier, items } = body;
 
     if (!itemsDescription || !totalCost || totalCost <= 0) {
       return NextResponse.json({ success: false, error: 'Deskripsi dan total biaya belanja harus valid' }, { status: 400 });
@@ -38,6 +38,26 @@ export async function POST(request: Request) {
       )
       .bind(id, batchId, itemsDescription, totalCost, supplier || 'Supplier Umum', 'pending_production', null, 0, 0)
       .run();
+
+    // Insert individual purchase_items if provided
+    if (Array.isArray(items) && items.length > 0) {
+      for (const item of items) {
+        await db
+          .prepare(
+            'INSERT INTO purchase_items (id, batch_id, name, qty, unit, price_per_unit, total) VALUES (?, ?, ?, ?, ?, ?, ?)'
+          )
+          .bind(
+            `PI-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            batchId,
+            item.name || '',
+            item.qty || 1,
+            item.unit || 'kg',
+            item.pricePerUnit || 0,
+            item.total || 0
+          )
+          .run();
+      }
+    }
 
     // Record in capital_logs as expense
     const capitalId = `CAP-OUT-${Date.now()}`;
@@ -58,6 +78,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
 
 // PUT: Update batch to produced status with product, qty, hpp
 export async function PUT(request: Request) {

@@ -15,6 +15,7 @@ export async function POST(request: Request) {
     await db.prepare('DELETE FROM sales').run();
     await db.prepare('DELETE FROM stock_movements').run();
     await db.prepare('DELETE FROM product_stocks').run();
+    await db.prepare('DELETE FROM purchase_items').run();
     await db.prepare('DELETE FROM purchase_batches').run();
     await db.prepare('DELETE FROM capital_logs').run();
     await db.prepare('DELETE FROM audit_logs').run();

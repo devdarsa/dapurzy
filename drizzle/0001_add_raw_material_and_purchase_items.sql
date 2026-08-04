@@ -1,4 +1,5 @@
--- Apply new tables if not yet created
+-- Tabel raw_material_history untuk menyimpan riwayat bahan baku yang pernah dibeli
+-- Digunakan sebagai auto-suggest pada Form Belanja Bahan Baku
 CREATE TABLE IF NOT EXISTS `raw_material_history` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -7,8 +8,10 @@ CREATE TABLE IF NOT EXISTS `raw_material_history` (
 	`buy_count` integer DEFAULT 1 NOT NULL,
 	`updated_at` text DEFAULT CURRENT_TIMESTAMP
 );
+--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS `raw_material_history_name_unique` ON `raw_material_history` (`name`);
 
+-- Tabel purchase_items untuk menyimpan rincian item per batch belanja
 CREATE TABLE IF NOT EXISTS `purchase_items` (
 	`id` text PRIMARY KEY NOT NULL,
 	`batch_id` text NOT NULL,
@@ -17,24 +20,8 @@ CREATE TABLE IF NOT EXISTS `purchase_items` (
 	`unit` text NOT NULL DEFAULT 'kg',
 	`price_per_unit` real NOT NULL DEFAULT 0,
 	`total` real NOT NULL DEFAULT 0,
-	`created_at` text DEFAULT CURRENT_TIMESTAMP
+	`created_at` text DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (`batch_id`) REFERENCES `purchase_batches`(`batch_id`) ON UPDATE no action ON DELETE cascade
 );
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS `purchase_items_batch_idx` ON `purchase_items` (`batch_id`);
-
--- Clear existing data in database
-DELETE FROM users;
-DELETE FROM products;
-DELETE FROM mitras;
-DELETE FROM purchase_batches;
-DELETE FROM purchase_items;
-DELETE FROM product_stocks;
-DELETE FROM sales;
-DELETE FROM stock_movements;
-DELETE FROM capital_logs;
-DELETE FROM audit_logs;
-DELETE FROM raw_material_history;
-
--- Seed Official User Account 'develzy' with PIN '250423'
-INSERT INTO users (id, username, password_hash, pin) 
-VALUES ('USR-001', 'develzy', 'dapurelzy', '250423');
-

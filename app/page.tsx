@@ -295,8 +295,8 @@ export default function DAPURZYApp() {
   // ── HANDLER BUSINESS LOGIC — SEMUA MENYIMPAN KE D1 ──────────────────────────
 
   // 1. Tambah Belanja Bahan Baku
-  const handleCreatePurchaseBatch = async (data: { itemsDescription: string; totalCost: number; supplier: string }) => {
-    const { itemsDescription, totalCost, supplier } = data;
+  const handleCreatePurchaseBatch = async (data: { itemsDescription: string; totalCost: number; supplier: string; items?: any[] }) => {
+    const { itemsDescription, totalCost, supplier, items } = data;
 
     if (!itemsDescription || totalCost <= 0) {
       showToast('Deskripsi dan total biaya belanja harus diisi dengan benar!', 'error'); return;
@@ -316,7 +316,7 @@ export default function DAPURZYApp() {
       const res = await fetch('/api/purchases', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, batchId, itemsDescription, totalCost, supplier: supplier || 'Supplier Umum' }),
+        body: JSON.stringify({ id, batchId, itemsDescription, totalCost, supplier: supplier || 'Supplier Umum', items: items || [] }),
       });
       const json = await res.json();
       if (!json.success) { showToast(json.error || 'Gagal menyimpan belanja ke database!', 'error'); return; }
@@ -328,6 +328,7 @@ export default function DAPURZYApp() {
       showToast('Koneksi ke database gagal saat menyimpan belanja.', 'error');
     }
   };
+
 
   // 2. Tarik Batch Belanja → Produksi
   const handleProduceFromBatch = async (data: { batchId: string; productId: string; producedQty: number; note?: string }) => {
@@ -805,7 +806,6 @@ export default function DAPURZYApp() {
         isOpen={activeModal === 'purchase'}
         onClose={() => setActiveModal(null)}
         cashBalance={cashBalance}
-        purchaseBatches={purchaseBatches}
         onSubmit={handleCreatePurchaseBatch}
       />
 
