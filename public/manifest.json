@@ -1,0 +1,22 @@
+{
+  "short_name": "DAPURZY",
+  "name": "DAPURZY - Batch HPP & Consignment Management System",
+  "description": "Aplikasi Manajemen HPP Presisi Berbasis Batch & Multi-Lokasi Konsinyasi untuk Usaha Rumahan.",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#064e3b",
+  "theme_color": "#064e3b",
+  "display": "standalone",
+  "orientation": "portrait"
+}
