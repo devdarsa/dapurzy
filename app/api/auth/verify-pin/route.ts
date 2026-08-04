@@ -24,7 +24,7 @@ export async function POST(request: Request) {
         if (userRes) {
           return NextResponse.json({
             valid: true,
-            user: { id: userRes.id, username: userRes.username, role: userRes.role },
+            user: { id: userRes.id, username: userRes.username },
           });
         }
       } catch (dbErr) {
@@ -32,11 +32,11 @@ export async function POST(request: Request) {
       }
     }
 
-    // Dynamic Database / Seed fallback for pin 250423
+    // Database seed fallback
     const isValid = pin === '250423';
     return NextResponse.json({
       valid: isValid,
-      user: isValid ? { id: 'u-develzy', username: 'develzy', role: 'owner' } : null,
+      user: isValid ? { id: 'USR-001', username: 'develzy' } : null,
     });
   } catch (error) {
     return NextResponse.json({ valid: false, error: 'Error verifikasi PIN' }, { status: 500 });

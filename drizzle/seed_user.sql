@@ -10,5 +10,5 @@ DELETE FROM capital_logs;
 DELETE FROM audit_logs;
 
 -- Seed Official User Account 'develzy' with PIN '250423'
-INSERT INTO users (id, username, pin, role) 
-VALUES ('u-develzy', 'develzy', '250423', 'owner');
+INSERT INTO users (id, username, password_hash, pin) 
+VALUES ('USR-001', 'develzy', 'dapurelzy', '250423');
