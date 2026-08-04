@@ -139,23 +139,23 @@ export default function DashboardModule({
 
       {/* FINANCIAL OVERVIEW (3 WALLETS CARD) */}
       <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-emerald-900 text-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-lg relative overflow-hidden border border-emerald-800/60 space-y-3.5">
-        <div className="flex justify-between items-start">
-          <div>
+        <div className="flex justify-between items-start gap-2 min-w-0">
+          <div className="min-w-0 flex-1">
             <span className="text-[11px] sm:text-xs font-bold text-emerald-300 uppercase tracking-wider block">
-              🏦 Kas Modal Operasional Usaha
+              🏦 Kas Modal Operasional
             </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-amber-400 mt-0.5 tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-black text-amber-400 mt-0.5 tracking-tight truncate">
               {formatRupiah(operatingCapital)}
             </h2>
-            <p className="text-[10px] text-emerald-200/80 mt-0.5 font-medium">
-              (Berputar untuk belanja & terisi kembali dari HPP setoran)
+            <p className="text-[10px] text-emerald-200/80 mt-0.5 font-medium truncate">
+              (Terisi kembali dari HPP setoran)
             </p>
           </div>
           <button
             onClick={() => onOpenModal('capital')}
-            className="bg-emerald-800/90 hover:bg-emerald-700 text-emerald-100 font-extrabold text-xs px-3 py-2 rounded-xl border border-emerald-700/80 shadow-sm active:scale-95 transition cursor-pointer"
+            className="bg-emerald-800/90 hover:bg-emerald-700 text-emerald-100 font-extrabold text-xs px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl border border-emerald-700/80 shadow-xs active:scale-95 transition cursor-pointer whitespace-nowrap shrink-0"
           >
-            + Injeksi Modal
+            + Modal
           </button>
         </div>
 

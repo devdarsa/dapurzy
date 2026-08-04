@@ -39,10 +39,10 @@ export default function MasterModule({
           </div>
           <button
             onClick={onOpenCreateProductModal}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl flex items-center space-x-1 shadow-2xs active:scale-95 transition cursor-pointer"
+            className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl flex items-center space-x-1 shadow-2xs active:scale-95 transition cursor-pointer whitespace-nowrap shrink-0"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Tambah Produk</span>
+            <span>+ Produk</span>
           </button>
         </div>
 
@@ -107,10 +107,10 @@ export default function MasterModule({
           </div>
           <button
             onClick={onOpenCreateMitraModal}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl flex items-center space-x-1 shadow-2xs active:scale-95 transition cursor-pointer"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl flex items-center space-x-1 shadow-2xs active:scale-95 transition cursor-pointer whitespace-nowrap shrink-0"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Tambah Mitra</span>
+            <span>+ Mitra</span>
           </button>
         </div>
 

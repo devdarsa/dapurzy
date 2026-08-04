@@ -623,14 +623,14 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
 
                 <button
                   onClick={() => { setEditingMitra(null); setActiveModal('mitra'); }}
-                  className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-3 py-2 rounded-xl shadow-xs active:scale-95 transition cursor-pointer flex items-center gap-1"
+                  className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl shadow-xs active:scale-95 transition cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Tambah Mitra</span>
+                  <span>+ Mitra</span>
                 </button>
                 <button
                   onClick={() => setActiveModal('settlement')}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl shadow-xs active:scale-95 transition cursor-pointer flex items-center gap-1"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl shadow-xs active:scale-95 transition cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Rekap Setoran</span>
