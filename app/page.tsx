@@ -805,6 +805,7 @@ export default function DAPURZYApp() {
         isOpen={activeModal === 'purchase'}
         onClose={() => setActiveModal(null)}
         cashBalance={cashBalance}
+        purchaseBatches={purchaseBatches}
         onSubmit={handleCreatePurchaseBatch}
       />
 
