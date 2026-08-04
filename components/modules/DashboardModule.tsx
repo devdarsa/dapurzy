@@ -11,6 +11,8 @@ import {
   PackageCheck,
   Store,
   Clock,
+  CheckCircle2,
+  Box,
 } from 'lucide-react';
 import { PurchaseBatch, Product, ProductStock } from '@/lib/types';
 import { formatRupiah } from '@/lib/utils';
@@ -41,10 +43,37 @@ export default function DashboardModule({
   todayStats,
   purchaseBatches,
   products,
+  transactions,
   onOpenModal,
   getProductStockSummary,
 }: DashboardModuleProps) {
   const pendingProductionBatches = purchaseBatches.filter((b) => b.status === 'pending_production');
+
+  // Active Produced Batches with Remaining Stock > 0 (Max 4 Batches)
+  const activeBatches = purchaseBatches
+    .filter((b) => b.status === 'produced' && b.productId)
+    .map((b, idx) => {
+      const product = products.find((p) => p.id === b.productId);
+      const summary = b.productId ? getProductStockSummary(b.productId) : { total: 0 };
+      const currentRemainingStock = Math.min(b.producedQty, summary.total);
+      const soldQty = Math.max(0, b.producedQty - currentRemainingStock);
+      const price = product?.price || 0;
+
+      const grossOmzet = soldQty * price;
+      const netProfit = soldQty * (price - b.calculatedHpp);
+
+      return {
+        batch: b,
+        productName: product?.name || 'Produk',
+        batchNumberIndex: idx + 1,
+        remainingStock: currentRemainingStock,
+        soldQty,
+        grossOmzet,
+        netProfit,
+      };
+    })
+    .filter((item) => item.remainingStock > 0) // Hide when stock runs out to 0
+    .slice(0, 4); // Max 4 Batches on Dashboard
 
   return (
     <div className="space-y-3.5 sm:space-y-5 animate-in fade-in duration-200">
@@ -105,6 +134,67 @@ export default function DashboardModule({
           <p className="text-xs sm:text-sm font-black text-rose-600 whitespace-nowrap truncate">{formatRupiah(todayStats.pengeluaran)}</p>
         </div>
       </div>
+
+      {/* ELEGANT ACTIVE BATCH TRACEABILITY GRID (MAX 4 BATCHES) */}
+      {activeBatches.length > 0 && (
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+          <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+            <div>
+              <h3 className="font-bold text-xs sm:text-sm text-slate-800 flex items-center gap-1.5 whitespace-nowrap">
+                <Box className="w-4 h-4 text-purple-600 flex-shrink-0" /> Ringkasan Batch Belanja Aktif (Max 4 Batch)
+              </h3>
+              <p className="text-[11px] text-slate-500">Otomatis hilang jika sisa stok batch mencapai 0 pcs</p>
+            </div>
+            <span className="text-[10px] font-extrabold bg-purple-100 text-purple-900 px-2 py-0.5 rounded-full">
+              {activeBatches.length} Active
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {activeBatches.map((item) => (
+              <div
+                key={item.batch.batchId}
+                className="bg-gradient-to-br from-slate-50 to-purple-50/30 p-3 sm:p-3.5 rounded-xl border border-slate-200/90 shadow-2xs space-y-2 text-xs"
+              >
+                {/* Header Batch */}
+                <div className="flex justify-between items-center border-b border-slate-200/60 pb-1.5">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-[10px] font-extrabold bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded font-mono">
+                      Belanja Ke-{item.batchNumberIndex}
+                    </span>
+                    <span className="font-bold text-slate-700 text-xs truncate max-w-[120px]">{item.batch.batchId}</span>
+                  </div>
+                  <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                    Sisa Stok: {item.remainingStock} pcs
+                  </span>
+                </div>
+
+                {/* Body Details */}
+                <div className="space-y-1">
+                  <p className="font-extrabold text-slate-800 text-xs sm:text-sm leading-tight truncate">
+                    Menjadi: <span className="text-purple-700">{item.batch.producedQty} Pcs</span> {item.productName}
+                  </p>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    Total Biaya Belanja: <b>{formatRupiah(item.batch.totalCost)}</b> (HPP {formatRupiah(item.batch.calculatedHpp)}/pcs)
+                  </p>
+                </div>
+
+                {/* Omzet Kotor vs Laba Bersih Footer */}
+                <div className="pt-2 border-t border-slate-200/60 grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-white p-2 rounded-lg border border-slate-200">
+                    <span className="text-[10px] text-slate-500 block">Pendapatan Kotor</span>
+                    <span className="font-black text-slate-800 text-xs sm:text-sm">{formatRupiah(item.grossOmzet)}</span>
+                  </div>
+                  <div className="bg-white p-2 rounded-lg border border-slate-200">
+                    <span className="text-[10px] text-slate-500 block">Pendapatan Bersih</span>
+                    <span className="font-black text-emerald-600 text-xs sm:text-sm">{formatRupiah(item.netProfit)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* QUICK ACTION BAR (STRICT SINGLE-LINE BUTTON TITLES) */}
       <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
