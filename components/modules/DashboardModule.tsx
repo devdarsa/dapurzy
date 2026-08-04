@@ -1,284 +1,365 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Wallet,
   TrendingUp,
-  TrendingDown,
-  Layers,
-  ShoppingCart,
-  ArrowLeftRight,
-  PackageCheck,
-  Store,
-  Clock,
   Box,
-  TrendingUpIcon,
+  PlusCircle,
+  CheckCircle2,
+  Home,
+  Trophy,
+  Calendar,
 } from 'lucide-react';
-import { PurchaseBatch, Product, ProductStock } from '@/lib/types';
+import { PurchaseBatch, Product, Mitra, Sale, PeriodFilter } from '@/lib/types';
 import { formatRupiah } from '@/lib/utils';
 
 interface DashboardModuleProps {
-  cashBalance: number;
-  activeCapital: number;
-  stockValuation: number;
-  todayStats: {
-    omzet: number;
-    laba: number;
-    pengeluaran: number;
-  };
+  operatingCapital: number; // Kas Modal Operasional
+  netProfitPool: number;    // Kantong Profit Bersih
+  totalGrossOmzet: number;  // Total Omset Kotor
   purchaseBatches: PurchaseBatch[];
   products: Product[];
-  stocks: ProductStock[];
-  transactions: any[];
+  mitras: Mitra[];
+  sales: Sale[];
   onOpenModal: (
-    modal: 'sale' | 'movement' | 'production' | 'purchase' | 'capital' | 'settlement'
+    modal: 'batch_production' | 'settlement' | 'home_sales' | 'capital' | 'product' | 'mitra'
   ) => void;
-  getProductStockSummary: (productId: string) => { gudang: number; mitraTotal: number; total: number };
 }
 
 export default function DashboardModule({
-  cashBalance,
-  activeCapital,
-  stockValuation,
-  todayStats,
+  operatingCapital,
+  netProfitPool,
+  totalGrossOmzet,
   purchaseBatches,
   products,
+  mitras,
+  sales,
   onOpenModal,
-  getProductStockSummary,
 }: DashboardModuleProps) {
-  const pendingProductionBatches = purchaseBatches.filter((b) => b.status === 'pending_production');
+  const [period, setPeriod] = useState<PeriodFilter>('all');
 
-  // Active Produced Batches with Remaining Stock > 0 (Maximal 4 Active Grid Batches)
-  const activeBatches = purchaseBatches
-    .filter((b) => b.status === 'produced' && b.productId)
-    .map((b) => {
-      const product = products.find((p) => p.id === b.productId);
-      const summary = b.productId ? getProductStockSummary(b.productId) : { total: 0 };
-      const currentRemainingStock = Math.min(b.producedQty, summary.total);
-      const soldQty = Math.max(0, b.producedQty - currentRemainingStock);
-      const price = product?.price || 0;
+  // Filter Sales based on Selected Period
+  const filteredSales = useMemo(() => {
+    const now = new Date();
+    const todayStr = now.toDateString();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
 
-      const grossOmzet = soldQty * price;
-      const netProfit = soldQty * (price - b.calculatedHpp);
+    return sales.filter((s) => {
+      if (!s.createdAt) return true;
+      const sDate = new Date(s.createdAt);
 
-      return {
-        batch: b,
-        productName: product?.name || 'Produk',
-        remainingStock: currentRemainingStock,
-        soldQty,
-        grossOmzet,
-        netProfit,
-      };
-    })
-    .filter((item) => item.remainingStock > 0) // Hide when stock reaches 0
-    .slice(0, 4); // Max 4 Grid Cards
+      if (period === 'today') {
+        return sDate.toDateString() === todayStr;
+      } else if (period === 'month') {
+        return sDate.getMonth() === currentMonth && sDate.getFullYear() === currentYear;
+      }
+      return true; // 'all'
+    });
+  }, [sales, period]);
+
+  // Compute Period Metrics
+  const periodOmzet = useMemo(() => {
+    return filteredSales.reduce((sum, s) => sum + (Number(s.totalAmount) || 0), 0);
+  }, [filteredSales]);
+
+  const periodProfit = useMemo(() => {
+    return filteredSales.reduce((sum, s) => sum + (Number(s.profit) || 0), 0);
+  }, [filteredSales]);
+
+  // Top Mitra Leaderboard (Rank Top 3 Mitras in Period)
+  const topMitras = useMemo(() => {
+    const mitraStats: Record<string, { omzet: number; soldQty: number }> = {};
+
+    filteredSales.forEach((s) => {
+      if ((s.saleType === 'CONSIGNMENT' || s.saleType === 'MITRA') && s.mitraId) {
+        if (!mitraStats[s.mitraId]) {
+          mitraStats[s.mitraId] = { omzet: 0, soldQty: 0 };
+        }
+        mitraStats[s.mitraId].omzet += Number(s.totalAmount) || 0;
+        mitraStats[s.mitraId].soldQty += Number(s.quantity) || 0;
+      }
+    });
+
+    const ranked = Object.entries(mitraStats)
+      .map(([mId, stat]) => {
+        const mitraObj = mitras.find((m) => m.id === mId);
+        return {
+          mitraId: mId,
+          name: mitraObj?.name || 'Mitra',
+          type: mitraObj?.type || 'Warung',
+          omzet: stat.omzet,
+          soldQty: stat.soldQty,
+        };
+      })
+      .sort((a, b) => b.omzet - a.omzet);
+
+    return ranked.slice(0, 3);
+  }, [filteredSales, mitras]);
+
+  // Recent batches
+  const activeBatches = purchaseBatches.slice(0, 5);
 
   return (
-    <div className="space-y-3.5 sm:space-y-5 animate-in fade-in duration-200">
-      {/* FINANCIAL OVERVIEW CARD */}
-      <div className="bg-gradient-to-br from-emerald-900 via-emerald-950 to-slate-900 text-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-md relative overflow-hidden border border-emerald-800/60 space-y-3">
-        <div className="flex flex-wrap sm:flex-nowrap justify-between items-start gap-2">
-          <div className="min-w-0 flex-1">
-            <span className="text-[11px] sm:text-xs font-semibold text-emerald-200 uppercase tracking-wider block truncate">
-              Saldo Kas Operasional Usaha
+    <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-200">
+      {/* PERIODE SWITCHER BAR */}
+      <div className="flex items-center justify-between bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-xs text-xs font-bold">
+        <div className="flex items-center gap-1.5 text-slate-700 pl-2">
+          <Calendar className="w-4 h-4 text-emerald-600" />
+          <span className="hidden sm:inline">Periode Tampilan:</span>
+        </div>
+        <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+          <button
+            onClick={() => setPeriod('today')}
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              period === 'today' ? 'bg-emerald-600 text-white font-extrabold shadow-xs' : 'text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Hari Ini
+          </button>
+          <button
+            onClick={() => setPeriod('month')}
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              period === 'month' ? 'bg-emerald-600 text-white font-extrabold shadow-xs' : 'text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Bulan Ini
+          </button>
+          <button
+            onClick={() => setPeriod('all')}
+            className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              period === 'all' ? 'bg-emerald-600 text-white font-extrabold shadow-xs' : 'text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Semua Waktu
+          </button>
+        </div>
+      </div>
+
+      {/* FINANCIAL OVERVIEW (3 WALLETS CARD) */}
+      <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-emerald-900 text-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-lg relative overflow-hidden border border-emerald-800/60 space-y-3.5">
+        <div className="flex justify-between items-start">
+          <div>
+            <span className="text-[11px] sm:text-xs font-bold text-emerald-300 uppercase tracking-wider block">
+              🏦 Kas Modal Operasional Usaha
             </span>
             <h2 className="text-2xl sm:text-3xl font-black text-amber-400 mt-0.5 tracking-tight">
-              {formatRupiah(cashBalance)}
+              {formatRupiah(operatingCapital)}
             </h2>
+            <p className="text-[10px] text-emerald-200/80 mt-0.5 font-medium">
+              (Berputar untuk belanja & terisi kembali dari HPP setoran)
+            </p>
           </div>
           <button
             onClick={() => onOpenModal('capital')}
-            className="bg-emerald-800/90 hover:bg-emerald-700 text-emerald-100 font-extrabold text-xs px-3 py-2 rounded-xl border border-emerald-700/80 shadow-2xs active:scale-95 transition cursor-pointer flex-shrink-0 self-start mt-0.5"
+            className="bg-emerald-800/90 hover:bg-emerald-700 text-emerald-100 font-extrabold text-xs px-3 py-2 rounded-xl border border-emerald-700/80 shadow-sm active:scale-95 transition cursor-pointer"
           >
             + Injeksi Modal
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-emerald-800/60 text-xs sm:text-sm">
-          <div className="p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-800/40">
-            <span className="text-[11px] text-emerald-300 block whitespace-nowrap">Total Modal Aktif</span>
-            <span className="font-extrabold text-white text-xs sm:text-sm whitespace-nowrap">{formatRupiah(activeCapital)}</span>
-          </div>
-          <div className="p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-800/40">
-            <span className="text-[11px] text-emerald-300 block whitespace-nowrap">Valuasi Stok Barang</span>
-            <span className="font-extrabold text-amber-300 text-xs sm:text-sm whitespace-nowrap">{formatRupiah(stockValuation)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* TODAY'S PERFORMANCE STATS (STRICT SINGLE-LINE HEADINGS) */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <div className="bg-white p-2.5 sm:p-3.5 rounded-xl border border-slate-200 shadow-2xs space-y-1">
-          <div className="flex items-center space-x-1 text-slate-500 overflow-hidden">
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-            <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap truncate">Omzet Hari Ini</span>
-          </div>
-          <p className="text-xs sm:text-sm font-black text-slate-800 whitespace-nowrap truncate">{formatRupiah(todayStats.omzet)}</p>
-        </div>
-
-        <div className="bg-white p-2.5 sm:p-3.5 rounded-xl border border-slate-200 shadow-2xs space-y-1">
-          <div className="flex items-center space-x-1 text-slate-500 overflow-hidden">
-            <Wallet className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-            <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap truncate">Laba Bersih</span>
-          </div>
-          <p className="text-xs sm:text-sm font-black text-emerald-600 whitespace-nowrap truncate">{formatRupiah(todayStats.laba)}</p>
-        </div>
-
-        <div className="bg-white p-2.5 sm:p-3.5 rounded-xl border border-slate-200 shadow-2xs space-y-1">
-          <div className="flex items-center space-x-1 text-slate-500 overflow-hidden">
-            <TrendingDown className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
-            <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap truncate">Belanja Modal</span>
-          </div>
-          <p className="text-xs sm:text-sm font-black text-rose-600 whitespace-nowrap truncate">{formatRupiah(todayStats.pengeluaran)}</p>
-        </div>
-      </div>
-
-      {/* 4-COLUMN RESPONSIVE ELEGANT GRID CARD (SPESIFIKASI INFORMASI DASHBOARD) */}
-      {activeBatches.length > 0 && (
-        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-          <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-            <div>
-              <h3 className="font-bold text-xs sm:text-sm text-slate-800 flex items-center gap-1.5 whitespace-nowrap">
-                <Box className="w-4 h-4 text-purple-600 flex-shrink-0" /> Informasi Belanja Aktif (Max 4 Grid)
-              </h3>
-              <p className="text-[11px] text-slate-500">Stok 0 otomatis tidak ditampilkan</p>
-            </div>
-            <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">
-              {activeBatches.length} Belanja Aktif
+          <div className="p-3 rounded-xl bg-emerald-950/70 border border-emerald-800/50">
+            <span className="text-[10px] text-emerald-300 block font-semibold">
+              💰 Profit ({period === 'today' ? 'Hari Ini' : period === 'month' ? 'Bulan Ini' : 'Total'})
+            </span>
+            <span className="font-extrabold text-amber-300 text-sm sm:text-base">
+              {formatRupiah(period === 'all' ? netProfitPool : periodProfit)}
             </span>
           </div>
+          <div className="p-3 rounded-xl bg-emerald-950/70 border border-emerald-800/50">
+            <span className="text-[10px] text-emerald-300 block font-semibold">
+              📊 Omset ({period === 'today' ? 'Hari Ini' : period === 'month' ? 'Bulan Ini' : 'Total'})
+            </span>
+            <span className="font-extrabold text-white text-sm sm:text-base">
+              {formatRupiah(period === 'all' ? totalGrossOmzet : periodOmzet)}
+            </span>
+          </div>
+        </div>
+      </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {activeBatches.map((item, index) => (
+      {/* 3 MAIN QUICK ACTION BUTTONS */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <button
+          onClick={() => onOpenModal('batch_production')}
+          className="p-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm flex items-center justify-between shadow-md active:scale-95 transition cursor-pointer group"
+        >
+          <div className="flex items-center gap-2.5 text-left">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/80 flex items-center justify-center text-white shadow-inner">
+              <PlusCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-black leading-tight">Belanja & Produksi</p>
+              <p className="text-[10px] font-normal text-emerald-100">Input Batch & Titip</p>
+            </div>
+          </div>
+          <span className="text-base">➔</span>
+        </button>
+
+        <button
+          onClick={() => onOpenModal('settlement')}
+          className="p-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs sm:text-sm flex items-center justify-between shadow-md active:scale-95 transition cursor-pointer group border border-slate-800"
+        >
+          <div className="flex items-center gap-2.5 text-left">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/90 flex items-center justify-center text-amber-950 shadow-inner">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-black leading-tight">Rekap Setoran Mitra</p>
+              <p className="text-[10px] font-normal text-slate-300">Setor Uang Warung</p>
+            </div>
+          </div>
+          <span className="text-base">➔</span>
+        </button>
+
+        <button
+          onClick={() => onOpenModal('home_sales')}
+          className="p-3.5 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs sm:text-sm flex items-center justify-between shadow-md active:scale-95 transition cursor-pointer group"
+        >
+          <div className="flex items-center gap-2.5 text-left">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-inner">
+              <Home className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-black leading-tight">Setor Uang Rumah</p>
+              <p className="text-[10px] font-normal text-amber-100">Toples Jual Rumah 1-Tap</p>
+            </div>
+          </div>
+          <span className="text-base">➔</span>
+        </button>
+      </div>
+
+      {/* TOP MITRA TERLARIS LEADERBOARD WIDGET */}
+      {topMitras.length > 0 && (
+        <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+          <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+            <h3 className="font-extrabold text-xs sm:text-sm text-slate-800 flex items-center gap-1.5">
+              <Trophy className="w-4 h-4 text-amber-500" /> 🏆 Top Mitra Terlaris ({period === 'today' ? 'Hari Ini' : period === 'month' ? 'Bulan Ini' : 'Semua Waktu'})
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {topMitras.map((tm, idx) => (
               <div
-                key={item.batch.batchId}
-                className="bg-gradient-to-br from-slate-50 via-white to-purple-50/20 p-3.5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-3 relative overflow-hidden"
+                key={tm.mitraId}
+                className={`p-3 rounded-xl border flex items-center justify-between gap-2 ${
+                  idx === 0
+                    ? 'bg-amber-50/80 border-amber-200/90'
+                    : idx === 1
+                    ? 'bg-slate-50 border-slate-200'
+                    : 'bg-orange-50/60 border-orange-200/60'
+                }`}
               >
-                {/* 1. Belanja Ke- & Sisa Stok Marker */}
-                <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                  <span className="text-xs font-black bg-amber-400 text-amber-950 px-2 py-0.5 rounded-lg shadow-2xs">
-                    Belanja {index + 1}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs ${
+                      idx === 0
+                        ? 'bg-amber-400 text-amber-950'
+                        : idx === 1
+                        ? 'bg-slate-300 text-slate-800'
+                        : 'bg-orange-300 text-orange-900'
+                    }`}
+                  >
+                    #{idx + 1}
                   </span>
-                  <span className="text-[11px] font-extrabold text-emerald-800 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-lg">
-                    Stok: {item.remainingStock} Buah
-                  </span>
-                </div>
-
-                {/* 2. Menjadi Berapa Buah */}
-                <div className="space-y-0.5">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Hasil Produksi</span>
-                  <p className="text-xs sm:text-sm font-black text-slate-800 leading-tight">
-                    {item.batch.producedQty} Buah <span className="text-purple-700 font-bold">({item.productName})</span>
-                  </p>
-                </div>
-
-                {/* 3. Financial Metrics (Kotor vs Bersih - Highlighted Prominently) */}
-                <div className="pt-2 border-t border-slate-100 space-y-1.5">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-[11px] text-slate-500 font-semibold">Pendapatan Kotor:</span>
-                    <span className="font-extrabold text-slate-700">{formatRupiah(item.grossOmzet)}</span>
-                  </div>
-
-                  {/* PROMINENT PROFIT INDICATOR */}
-                  <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200/90 flex justify-between items-center">
-                    <span className="text-[11px] text-emerald-900 font-extrabold flex items-center gap-1">
-                      <TrendingUpIcon className="w-3.5 h-3.5 text-emerald-600" /> Pendapatan Bersih:
-                    </span>
-                    <span className="font-black text-emerald-700 text-xs sm:text-sm">
-                      {formatRupiah(item.netProfit)}
-                    </span>
+                  <div className="min-w-0">
+                    <p className="font-black text-slate-800 text-xs truncate">{tm.name}</p>
+                    <p className="text-[10px] text-slate-500">{tm.soldQty} pcs laku</p>
                   </div>
                 </div>
+                <span className="font-black text-emerald-800 text-xs">{formatRupiah(tm.omzet)}</span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* QUICK ACTION BAR (STRICT SINGLE-LINE BUTTON TITLES) */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
-        <h3 className="font-bold text-xs sm:text-sm text-slate-700 uppercase tracking-wider whitespace-nowrap">Aksi Cepat Operasional</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <button
-            onClick={() => onOpenModal('purchase')}
-            className="p-2.5 sm:p-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center space-x-1 shadow-2xs active:scale-95 transition cursor-pointer overflow-hidden"
-          >
-            <Layers className="w-4 h-4 flex-shrink-0" />
-            <span className="whitespace-nowrap truncate">1. Belanja</span>
-          </button>
-          <button
-            onClick={() => onOpenModal('production')}
-            className="p-2.5 sm:p-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center space-x-1 shadow-2xs active:scale-95 transition cursor-pointer overflow-hidden"
-          >
-            <PackageCheck className="w-4 h-4 flex-shrink-0" />
-            <span className="whitespace-nowrap truncate">2. Produksi</span>
-          </button>
-          <button
-            onClick={() => onOpenModal('movement')}
-            className="p-2.5 sm:p-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center space-x-1 shadow-2xs active:scale-95 transition cursor-pointer overflow-hidden"
-          >
-            <ArrowLeftRight className="w-4 h-4 flex-shrink-0" />
-            <span className="whitespace-nowrap truncate">3. Titip Mitra</span>
-          </button>
-          <button
-            onClick={() => onOpenModal('settlement')}
-            className="p-2.5 sm:p-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center space-x-1 shadow-2xs active:scale-95 transition cursor-pointer overflow-hidden"
-          >
-            <ShoppingCart className="w-4 h-4 flex-shrink-0" />
-            <span className="whitespace-nowrap truncate">4. Retur 1-Tap</span>
-          </button>
-        </div>
-      </div>
-
-      {/* PENDING PRODUCTION ALERT */}
-      {pendingProductionBatches.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-2xl flex items-center justify-between shadow-2xs">
-          <div className="flex items-center space-x-2.5 overflow-hidden">
-            <Clock className="w-5 h-5 text-amber-600 flex-shrink-0" />
-            <div className="overflow-hidden">
-              <p className="text-xs sm:text-sm font-extrabold text-amber-900 whitespace-nowrap truncate">
-                {pendingProductionBatches.length} Batch Belanja Menunggu Produksi
-              </p>
-              <p className="text-xs text-amber-700 whitespace-nowrap truncate">Tarik ke produksi untuk Auto-HPP</p>
-            </div>
-          </div>
-          <button
-            onClick={() => onOpenModal('production')}
-            className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-2xs active:scale-95 transition cursor-pointer flex-shrink-0 whitespace-nowrap"
-          >
-            Proses
-          </button>
-        </div>
-      )}
-
-      {/* PRODUCT STOCK SUMMARY */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+      {/* ACTIVE BATCHES & DISTRIBUTION CARDS */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-          <h3 className="font-bold text-xs sm:text-sm text-slate-800 flex items-center gap-1.5 whitespace-nowrap">
-            <Store className="w-4 h-4 text-emerald-600 flex-shrink-0" /> Ringkasan Stok Produk Real-Time
+          <h3 className="font-extrabold text-xs sm:text-sm text-slate-800 flex items-center gap-1.5">
+            <Box className="w-4 h-4 text-purple-600" /> Riwayat Batch Produksi & Distribusi Terakhir
           </h3>
+          <span className="text-[10px] font-black bg-purple-100 text-purple-800 px-2.5 py-0.5 rounded-full">
+            {purchaseBatches.length} Total Batch
+          </span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {products.map((p) => {
-            const summary = getProductStockSummary(p.id);
-            return (
-              <div key={p.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-                <div className="flex justify-between items-center overflow-hidden">
-                  <span className="font-bold text-xs sm:text-sm text-slate-800 whitespace-nowrap truncate">{p.name}</span>
-                  <span className="font-extrabold text-xs text-purple-700 whitespace-nowrap flex-shrink-0">HPP: {formatRupiah(p.avgHpp)}</span>
+
+        {activeBatches.length === 0 ? (
+          <div className="text-center py-6 text-slate-400 text-xs">
+            Belum ada batch belanja/produksi. Klik <b>"Belanja & Produksi Baru"</b> untuk memulai siklus pertama!
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {activeBatches.map((b) => {
+              const product = products.find((p) => p.id === b.productId);
+              let allocationsList: any[] = [];
+              if (b.allocations) {
+                try {
+                  allocationsList = typeof b.allocations === 'string' ? JSON.parse(b.allocations) : b.allocations;
+                } catch (e) {
+                  allocationsList = [];
+                }
+              }
+
+              const totalTitipMitra = allocationsList.reduce((sum, a) => sum + (Number(a.quantity) || 0), 0);
+              const homeAllocation = Math.max(0, b.producedQty - totalTitipMitra);
+
+              return (
+                <div key={b.id} className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-[10px] font-black bg-amber-400 text-amber-950 px-2 py-0.5 rounded-md">
+                        {b.batchId}
+                      </span>
+                      <h4 className="font-black text-slate-800 text-xs sm:text-sm mt-1">
+                        {b.itemsDescription}
+                      </h4>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 font-bold block">Biaya Belanja</span>
+                      <span className="text-xs sm:text-sm font-black text-rose-600">{formatRupiah(b.totalCost)}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs pt-1 border-t border-slate-200/60">
+                    <div className="bg-white p-2 rounded-xl border border-slate-200">
+                      <span className="text-[10px] text-slate-400 font-bold block">Hasil Produksi:</span>
+                      <span className="font-extrabold text-slate-800">{b.producedQty} pcs ({product?.name || 'Produk'})</span>
+                    </div>
+                    <div className="bg-white p-2 rounded-xl border border-slate-200">
+                      <span className="text-[10px] text-amber-700 font-bold block">HPP per Unit:</span>
+                      <span className="font-black text-amber-900">{formatRupiah(b.calculatedHpp)}</span>
+                    </div>
+                    <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-200 col-span-2 sm:col-span-1">
+                      <span className="text-[10px] text-emerald-800 font-bold block">🏡 Alokasi Jual Rumah:</span>
+                      <span className="font-black text-emerald-900">{homeAllocation} pcs</span>
+                    </div>
+                  </div>
+
+                  {/* Mitra Allocations Badge */}
+                  {allocationsList.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {allocationsList.map((alloc, idx) => {
+                        const m = mitras.find((x) => x.id === alloc.mitraId);
+                        return (
+                          <span key={idx} className="text-[10px] font-bold bg-white text-slate-700 border border-slate-300 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                            <span>🤝 {m?.name || 'Mitra'}:</span>
+                            <strong className="text-emerald-700">{alloc.quantity} pcs</strong>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between items-center text-xs text-slate-600 pt-0.5">
-                  <span className="whitespace-nowrap">Gudang: <b>{summary.gudang} pcs</b></span>
-                  <span className="whitespace-nowrap">Mitra: <b>{summary.mitraTotal} pcs</b></span>
-                  <span className="font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded whitespace-nowrap">
-                    Total: {summary.total} pcs
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+

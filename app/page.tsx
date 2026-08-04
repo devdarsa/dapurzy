@@ -7,92 +7,109 @@ import DrawerMenu from '@/components/DrawerMenu';
 import Toast from '@/components/Toast';
 import PinLockScreen from '@/components/PinLockScreen';
 
-// Import Modular View Components
+// Import View Components & Ultra-Lean Modules
 import DashboardModule from '@/components/modules/DashboardModule';
-import BatchModule from '@/components/modules/BatchModule';
-import ProductionModule from '@/components/modules/ProductionModule';
-import MovementsModule from '@/components/modules/MovementsModule';
-import SalesModule from '@/components/modules/SalesModule';
-import StockModule from '@/components/modules/StockModule';
-import TraceabilityModule from '@/components/modules/TraceabilityModule';
 import MasterModule from '@/components/modules/MasterModule';
 
 // Import Form Modal Dialog Components
-import PurchaseModal from '@/components/modals/PurchaseModal';
-import ProductionModal from '@/components/modals/ProductionModal';
-import SaleModal from '@/components/modals/SaleModal';
-import MovementModal from '@/components/modals/MovementModal';
+import BatchProductionModal from '@/components/modals/BatchProductionModal';
+import MitraSettlementModal from '@/components/modals/MitraSettlementModal';
+import HomeSalesModal from '@/components/modals/HomeSalesModal';
 import CapitalModal from '@/components/modals/CapitalModal';
 import ProductModal from '@/components/modals/ProductModal';
 import MitraModal from '@/components/modals/MitraModal';
-import MitraSettlementModal from '@/components/modals/MitraSettlementModal';
 import ResetDataModal from '@/components/modals/ResetDataModal';
 
-// Import Types, Helpers & Notification Engine
-import { Product, Mitra, PurchaseBatch, ProductStock, AuditLog } from '@/lib/types';
-import { formatRupiah, calculatePrecisionHpp, calculateTransactionProfit } from '@/lib/utils';
-import { registerServiceWorkerAndRequestPermission, sendLowStockNotification } from '@/lib/notification';
+// Import Types & Helpers
+import { Product, Mitra, PurchaseBatch, Sale, PeriodFilter } from '@/lib/types';
+import { formatRupiah, formatDate } from '@/lib/utils';
+import { registerServiceWorkerAndRequestPermission } from '@/lib/notification';
+import { Users, Plus, CheckCircle2, ShoppingBag, Trophy, Calendar, Home } from 'lucide-react';
 
-// ── Helper: map snake_case DB rows → camelCase app types ──────────────────────
+// ── Helper Mappers ─────────────────────────────────────────────────────────────
 function mapProduct(r: any): Product {
   return {
     id: r.id,
     name: r.name,
-    category: r.category,
-    price: r.price,
-    avgHpp: r.avg_hpp ?? r.avgHpp ?? 0,
+    category: r.category || 'Umum',
+    price: Number(r.price) || 0,
+    avgHpp: Number(r.avg_hpp ?? r.avgHpp ?? 0),
     status: r.status ?? 'active',
   };
 }
 
 function mapMitra(r: any): Mitra {
+  let customPrices = {};
+  if (r.custom_prices || r.customPrices) {
+    try {
+      const raw = r.custom_prices ?? r.customPrices;
+      customPrices = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch (e) {
+      customPrices = {};
+    }
+  }
   return {
     id: r.id,
     name: r.name,
-    type: r.type,
+    type: r.type || 'Warung',
     whatsapp: r.whatsapp ?? '',
     address: r.address ?? '',
+    customPrices,
     status: r.status ?? 'active',
+    lifetimeOmzet: Number(r.lifetimeOmzet ?? r.lifetime_omzet ?? 0),
+    monthlyOmzet: Number(r.monthlyOmzet ?? r.monthly_omzet ?? 0),
+    todayOmzet: Number(r.todayOmzet ?? r.today_omzet ?? 0),
+    totalSoldQty: Number(r.totalSoldQty ?? r.total_sold_qty ?? 0),
   };
 }
 
 function mapBatch(r: any): PurchaseBatch {
+  let allocations = [];
+  if (r.allocations) {
+    try {
+      allocations = typeof r.allocations === 'string' ? JSON.parse(r.allocations) : r.allocations;
+    } catch (e) {
+      allocations = [];
+    }
+  }
   return {
     id: r.id,
     batchId: r.batch_id ?? r.batchId,
     date: r.created_at ?? r.date ?? new Date().toISOString(),
-    itemsDescription: r.items_description ?? r.itemsDescription,
-    totalCost: r.total_cost ?? r.totalCost,
+    itemsDescription: r.items_description ?? r.itemsDescription ?? '',
+    totalCost: Number(r.total_cost ?? r.totalCost ?? 0),
     supplier: r.supplier ?? 'Supplier Umum',
-    status: r.status ?? 'pending_production',
+    status: r.status ?? 'produced',
     productId: r.product_id ?? r.productId ?? null,
-    producedQty: r.produced_qty ?? r.producedQty ?? 0,
-    calculatedHpp: r.calculated_hpp ?? r.calculatedHpp ?? 0,
+    producedQty: Number(r.produced_qty ?? r.producedQty ?? 0),
+    calculatedHpp: Number(r.calculated_hpp ?? r.calculatedHpp ?? 0),
+    allocations,
   };
 }
 
-function mapStock(r: any): ProductStock {
+function mapSale(r: any): Sale {
   return {
     id: r.id,
-    productId: r.productId ?? r.product_id,
-    locationType: r.location_type ?? r.locationType,
+    trxNumber: r.trx_number ?? r.trxNumber,
+    saleType: r.sale_type ?? r.saleType ?? 'DIRECT',
     mitraId: r.mitra_id ?? r.mitraId ?? null,
-    quantity: r.quantity ?? 0,
-  };
-}
-
-function mapAuditLog(r: any): AuditLog {
-  return {
-    id: r.id,
-    action: r.action,
-    trxNumber: r.trx_number ?? r.trxNumber ?? '',
-    details: r.details,
+    productId: r.product_id ?? r.productId ?? 'P-HOME',
+    batchId: r.batch_id ?? r.batchId ?? null,
+    titipQty: Number(r.titip_qty ?? r.titipQty ?? 0),
+    returnedQty: Number(r.returned_qty ?? r.returnedQty ?? 0),
+    quantity: Number(r.quantity ?? 0),
+    pricePerUnit: Number(r.price_per_unit ?? r.pricePerUnit ?? 0),
+    totalAmount: Number(r.total_amount ?? r.totalAmount ?? 0),
+    hppPerUnit: Number(r.hpp_per_unit ?? r.hppPerUnit ?? 0),
+    recoveredCost: Number(r.recovered_cost ?? r.recoveredCost ?? 0),
+    profit: Number(r.profit ?? 0),
+    paymentMethod: r.payment_method ?? r.paymentMethod ?? 'CASH',
     createdAt: r.created_at ?? r.createdAt ?? new Date().toISOString(),
   };
 }
 
 export default function DAPURZYApp() {
-  // --- STATE KEAMANAN PIN (Sesi 3 Hari) ---
+  // --- STATE PIN SECURITY ---
   const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
   const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -116,7 +133,7 @@ export default function DAPURZYApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleUnlockSuccess = (_pin: string) => {
+  const handleUnlockSuccess = () => {
     setIsUnlocked(true);
     sessionStorage.setItem('dapurzy_unlocked', 'true');
     localStorage.setItem('dapurzy_unlock_timestamp', Date.now().toString());
@@ -129,16 +146,7 @@ export default function DAPURZYApp() {
     setIsUnlocked(false);
     sessionStorage.clear();
     localStorage.removeItem('dapurzy_unlock_timestamp');
-    if (typeof window !== 'undefined' && 'caches' in window) {
-      try {
-        const names = await caches.keys();
-        await Promise.all(names.map((n) => caches.delete(n)));
-      } catch (e) {
-        console.log('Cache purge error:', e);
-      }
-    }
-    showToast('Aplikasi Terkunci & Cache Dibersihkan!', 'error');
-    setTimeout(() => { if (typeof window !== 'undefined') window.location.reload(); }, 300);
+    showToast('Aplikasi Terkunci!', 'error');
   };
 
   // --- STATE NAVIGATION & UI ---
@@ -146,29 +154,28 @@ export default function DAPURZYApp() {
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [activeModal, setActiveModal] = useState<
-    'sale' | 'movement' | 'production' | 'purchase' | 'capital' | 'product' | 'mitra' | 'settlement' | 'reset' | null
+    'batch_production' | 'settlement' | 'home_sales' | 'capital' | 'product' | 'mitra' | 'reset' | null
   >(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingMitra, setEditingMitra] = useState<Mitra | null>(null);
+  const [mitraTabPeriod, setMitraTabPeriod] = useState<PeriodFilter>('all');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // --- STATE APLIKASI — SUMBER KEBENARAN: CLOUDFLARE D1 ---
-  const [cashBalance, setCashBalance] = useState<number>(0);
-  const [activeCapital, setActiveCapital] = useState<number>(0);
+  // --- FINANCIAL & CORE STATE ---
+  const [operatingCapital, setOperatingCapital] = useState<number>(0);
+  const [netProfitPool, setNetProfitPool] = useState<number>(0);
+  const [totalGrossOmzet, setTotalGrossOmzet] = useState<number>(0);
   const [products, setProducts] = useState<Product[]>([]);
   const [mitras, setMitras] = useState<Mitra[]>([]);
   const [purchaseBatches, setPurchaseBatches] = useState<PurchaseBatch[]>([]);
-  const [stocks, setStocks] = useState<ProductStock[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
 
-  // SHOW TOAST MESSAGE
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3500);
   };
 
-  // ── LOAD ALL DATA FROM D1 (Single Source of Truth) ──────────────────────────
+  // ── LOAD ALL DATA FROM D1 ──────────────────────────────────────────────────
   const loadFromD1 = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -181,382 +188,30 @@ export default function DAPURZYApp() {
       const json = await res.json();
       if (json.success && json.data) {
         const d = json.data;
-        setCashBalance(d.cashBalance ?? 0);
-        setActiveCapital(d.activeCapital ?? 0);
+        setOperatingCapital(d.operatingCapital ?? 0);
+        setNetProfitPool(d.netProfitPool ?? 0);
+        setTotalGrossOmzet(d.totalGrossOmzet ?? 0);
         setProducts((d.products ?? []).map(mapProduct));
         setMitras((d.mitras ?? []).map(mapMitra));
         setPurchaseBatches((d.purchaseBatches ?? []).map(mapBatch));
-        setStocks((d.stocks ?? []).map(mapStock));
-        setAuditLogs((d.auditLogs ?? []).map(mapAuditLog));
-
-        // Build transactions list from sales + movements for display
-        const sales = (d.sales ?? []).map((r: any) => ({
-          id: r.id,
-          trxNumber: r.trx_number ?? r.trxNumber,
-          date: r.created_at ?? r.date ?? new Date().toISOString(),
-          type: 'PENJUALAN',
-          title: `Penjualan ${r.sale_type === 'DIRECT' ? 'Direct' : 'Mitra'}`,
-          detail: `${r.quantity}x produk @ ${formatRupiah(r.price_per_unit)} [${r.payment_method}]`,
-          amount: r.total_amount ?? 0,
-          profit: r.profit ?? 0,
-          category: 'in',
-        }));
-
-        const movements = (d.movements ?? []).map((r: any) => ({
-          id: r.id,
-          trxNumber: r.trx_number ?? r.trxNumber,
-          date: r.created_at ?? r.date ?? new Date().toISOString(),
-          type: 'PERGERAKAN',
-          title: `Pergerakan Stok (${r.type})`,
-          detail: `${r.quantity} pcs produk ${r.product_id}`,
-          amount: 0,
-          profit: 0,
-          category: 'neutral',
-        }));
-
-        const purchases = (d.purchaseBatches ?? []).map((r: any) => ({
-          id: r.id,
-          trxNumber: `TRX-BELANJA-${r.batch_id ?? r.batchId}`,
-          date: r.created_at ?? r.date ?? new Date().toISOString(),
-          type: 'BELANJA',
-          title: `Belanja Batch ${r.batch_id ?? r.batchId}`,
-          detail: r.items_description ?? r.itemsDescription ?? '',
-          amount: r.total_cost ?? r.totalCost ?? 0,
-          profit: 0,
-          category: 'out',
-        }));
-
-        const allTrx = [...sales, ...movements, ...purchases].sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-        setTransactions(allTrx);
-      } else {
-        showToast('Tidak ada data di database. Silakan masukkan data pertama.', 'error');
+        setSales((d.sales ?? []).map(mapSale));
       }
     } catch (e) {
       showToast('Koneksi ke database gagal.', 'error');
-      console.error('loadFromD1 error:', e);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // --- HOURLY REAL-TIME LOW-STOCK CHECKER ---
-  useEffect(() => {
-    const checkLowStockAlerts = () => {
-      products.forEach((p) => {
-        const summary = getProductStockSummary(p.id);
-        if (summary.total <= 10) {
-          sendLowStockNotification(p.name, summary.total, `Segera tambah stok ${p.name}!`);
-        }
-      });
-    };
-    checkLowStockAlerts();
-    const intervalId = setInterval(checkLowStockAlerts, 60 * 60 * 1000);
-    return () => clearInterval(intervalId);
-  }, [products, stocks]);
+  // ── HANDLERS ───────────────────────────────────────────────────────────────
 
-  // --- STATISTIK RINGKASAN HARI INI ---
-  const todayStats = useMemo(() => {
-    const today = new Date().toDateString();
-    let omzet = 0;
-    let laba = 0;
-    let pengeluaran = 0;
-    transactions.forEach((trx) => {
-      const trxDate = new Date(trx.date).toDateString();
-      if (trxDate === today) {
-        if (trx.type === 'PENJUALAN') { omzet += trx.amount; laba += trx.profit || 0; }
-        else if (trx.type === 'BELANJA') { pengeluaran += trx.amount; }
-      }
-    });
-    return { omzet, laba, pengeluaran };
-  }, [transactions]);
-
-  // Total valuation of Inventory
-  const stockValuation = useMemo(() => {
-    let total = 0;
-    stocks.forEach((s) => {
-      const product = products.find((p) => p.id === s.productId);
-      if (product) total += s.quantity * product.avgHpp;
-    });
-    return total;
-  }, [stocks, products]);
-
-  // Helper Ringkasan Stok
-  const getProductStockSummary = (productId: string) => {
-    const gudang = stocks.find((s) => s.productId === productId && s.locationType === 'gudang')?.quantity || 0;
-    const mitraTotal = stocks
-      .filter((s) => s.productId === productId && s.locationType === 'mitra')
-      .reduce((sum, s) => sum + s.quantity, 0);
-    return { gudang, mitraTotal, total: gudang + mitraTotal };
-  };
-
-  // ── HANDLER BUSINESS LOGIC — SEMUA MENYIMPAN KE D1 ──────────────────────────
-
-  // 1. Tambah Belanja Bahan Baku
-  const handleCreatePurchaseBatch = async (data: { itemsDescription: string; totalCost: number; supplier: string; items?: any[] }) => {
-    const { itemsDescription, totalCost, supplier, items } = data;
-
-    if (!itemsDescription || totalCost <= 0) {
-      showToast('Deskripsi dan total biaya belanja harus diisi dengan benar!', 'error'); return;
-    }
-    if (cashBalance <= 0) {
-      showToast('Saldo Kas Operasional Habis (Rp 0)! Harap lakukan Injeksi Modal terlebih dahulu.', 'error'); return;
-    }
-    if (cashBalance < totalCost) {
-      showToast(`Saldo Kas (${formatRupiah(cashBalance)}) tidak mencukupi untuk belanja ${formatRupiah(totalCost)}!`, 'error'); return;
-    }
-
-    const batchSeq = String(purchaseBatches.length + 1).padStart(3, '0');
-    const batchId = `BATCH-${new Date().getFullYear()}-${batchSeq}`;
-    const id = `PB-${Date.now()}`;
-
-    try {
-      const res = await fetch('/api/purchases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, batchId, itemsDescription, totalCost, supplier: supplier || 'Supplier Umum', items: items || [] }),
-      });
-      const json = await res.json();
-      if (!json.success) { showToast(json.error || 'Gagal menyimpan belanja ke database!', 'error'); return; }
-
-      showToast(`Batch Belanja ${batchId} ${formatRupiah(totalCost)} berhasil dicatat!`);
-      setActiveModal(null);
-      await loadFromD1();
-    } catch (e) {
-      showToast('Koneksi ke database gagal saat menyimpan belanja.', 'error');
-    }
-  };
-
-
-  // 2. Tarik Batch Belanja → Produksi (Multi-Produk Output)
-  const handleProduceFromBatch = async (data: {
-    batchId: string;
-    outputs: Array<{
-      productId: string;
-      producedQty: number;
-    }>;
-    calculatedHpp: number;
-  }) => {
-    const { batchId, outputs, calculatedHpp } = data;
-    const batch = purchaseBatches.find((b) => b.batchId === batchId);
-
-    if (!batch) { showToast('Batch belanja tidak ditemukan!', 'error'); return; }
-    if (!outputs || outputs.length === 0) { showToast('Hasil produksi tidak boleh kosong!', 'error'); return; }
-    if (batch.status === 'produced') { showToast('Batch ini sudah ditarik ke produksi!', 'error'); return; }
-
-    const totalProducedQty = outputs.reduce((sum, o) => sum + o.producedQty, 0);
-
-    try {
-      const res = await fetch('/api/purchases', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ batchId, outputs, calculatedHpp }),
-      });
-      const json = await res.json();
-      if (!json.success) { showToast(json.error || 'Gagal menyimpan data produksi!', 'error'); return; }
-
-      showToast(`Produksi Selesai! HPP: ${formatRupiah(calculatedHpp)}/unit (${outputs.length} Jenis Produk, ${totalProducedQty} Pcs)`);
-      setActiveModal(null);
-      await loadFromD1();
-    } catch (e) {
-      showToast('Koneksi ke database gagal saat menyimpan produksi.', 'error');
-    }
-  };
-
-  // 3. Tambah Penjualan
-  const handleCreateSale = async (data: {
-    productId: string; quantity: number; locationType: 'gudang' | 'mitra'; mitraId?: string | null; paymentMethod?: string;
-  }) => {
-    const { productId, quantity, locationType, mitraId, paymentMethod = 'CASH' } = data;
-    const product = products.find((p) => p.id === productId);
-    if (!product) { showToast('Produk tidak ditemukan!', 'error'); return; }
-    if (quantity <= 0) { showToast('Kuantitas penjualan harus lebih dari 0!', 'error'); return; }
-
-    const stockItem = stocks.find((s) =>
-      locationType === 'gudang'
-        ? s.productId === productId && s.locationType === 'gudang'
-        : s.productId === productId && s.locationType === 'mitra' && s.mitraId === mitraId
-    );
-
-    const availableQty = stockItem ? stockItem.quantity : 0;
-    if (availableQty < quantity) { showToast(`Stok tidak mencukupi! Tersedia: ${availableQty} pcs`, 'error'); return; }
-
-    const totalAmount = quantity * product.price;
-    const profit = calculateTransactionProfit(quantity, product.price, product.avgHpp);
-    const id = `SALE-${Date.now()}`;
-    const trxNumber = `TRX-SALE-${Date.now().toString().slice(-6)}`;
-
-    try {
-      const res = await fetch('/api/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id, trxNumber, productId, quantity,
-          pricePerUnit: product.price, hppPerUnit: product.avgHpp,
-          totalAmount, profit,
-          saleType: locationType === 'gudang' ? 'DIRECT' : 'CONSIGNMENT',
-          mitraId: mitraId || null,
-          paymentMethod,
-          stockId: stockItem?.id,
-          newStockQty: (stockItem?.quantity ?? 0) - quantity,
-        }),
-      });
-      const json = await res.json();
-      if (!json.success) { showToast(json.error || 'Gagal menyimpan penjualan!', 'error'); return; }
-
-      showToast(`Penjualan ${product.name} (${quantity} pcs) berhasil dicatat!`);
-      setActiveModal(null);
-      await loadFromD1();
-    } catch (e) {
-      showToast('Koneksi ke database gagal saat menyimpan penjualan.', 'error');
-    }
-  };
-
-  // 4. Settlement & Retur Konsinyasi Mitra
-  const handleMitraSettlement = async (data: {
-    mitraId: string; productId: string; returnedQty: number; paymentMethod: string;
-  }) => {
-    const { mitraId, productId, returnedQty, paymentMethod } = data;
-    const product = products.find((p) => p.id === productId);
-    const mitraObj = mitras.find((m) => m.id === mitraId);
-
-    if (!product || !mitraObj) { showToast('Produk atau mitra tidak valid!', 'error'); return; }
-
-    const mitraStockItem = stocks.find((s) => s.locationType === 'mitra' && s.mitraId === mitraId && s.productId === productId);
-    const initialMitraStock = mitraStockItem ? mitraStockItem.quantity : 0;
-
-    if (initialMitraStock <= 0) { showToast(`Belum ada stok ${product.name} di ${mitraObj.name}!`, 'error'); return; }
-    if (returnedQty > initialMitraStock) { showToast(`Jumlah retur (${returnedQty}) melebihi stok di mitra (${initialMitraStock})!`, 'error'); return; }
-
-    const soldQty = initialMitraStock - returnedQty;
-    const totalAmount = soldQty * product.price;
-    const profit = calculateTransactionProfit(soldQty, product.price, product.avgHpp);
-    const trxNumberSale = `TRX-SETTLE-${Date.now().toString().slice(-6)}`;
-
-    try {
-      // Record settlement sale if any sold
-      if (soldQty > 0) {
-        const saleRes = await fetch('/api/sales', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: `SALE-SET-${Date.now()}`, trxNumber: trxNumberSale, productId, quantity: soldQty,
-            pricePerUnit: product.price, hppPerUnit: product.avgHpp, totalAmount, profit,
-            saleType: 'CONSIGNMENT', mitraId, paymentMethod,
-            stockId: mitraStockItem?.id, newStockQty: 0,
-          }),
-        });
-        const saleJson = await saleRes.json();
-        if (!saleJson.success) { showToast(saleJson.error || 'Gagal menyimpan settlement!', 'error'); return; }
-      } else {
-        // Just zero the mitra stock without a sale record
-        await fetch('/api/movements', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: `MOV-SET-${Date.now()}`, trxNumber: `TRX-RETUR-${Date.now().toString().slice(-6)}`,
-            productId, type: 'RETUR', mitraId, quantity: returnedQty,
-            note: `Retur penuh dari ${mitraObj.name}`,
-            sourceStockId: mitraStockItem?.id, sourceNewQty: 0,
-          }),
-        });
-      }
-
-      // Return goods to gudang if any
-      if (returnedQty > 0 && soldQty > 0) {
-        const gudangStock = stocks.find((s) => s.productId === productId && s.locationType === 'gudang');
-        await fetch('/api/movements', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: `MOV-RET-${Date.now()}`, trxNumber: `TRX-RETUR-${Date.now().toString().slice(-6)}`,
-            productId, type: 'MITRA_TO_GUDANG', mitraId, quantity: returnedQty,
-            note: `Retur sisa dari ${mitraObj.name}`,
-            targetStockId: gudangStock?.id,
-            targetNewQty: (gudangStock?.quantity ?? 0) + returnedQty,
-            newTargetStock: !gudangStock ? { id: `STK-${Date.now()}`, productId, locationType: 'gudang', mitraId: null, quantity: returnedQty } : null,
-          }),
-        });
-      }
-
-      showToast(`Settlement ${mitraObj.name} berhasil! ${soldQty} pcs laku & ${returnedQty} pcs kembali ke Gudang.`);
-      setActiveModal(null);
-      await loadFromD1();
-    } catch (e) {
-      showToast('Koneksi ke database gagal saat settlement.', 'error');
-    }
-  };
-
-  // 5. Pergerakan Stok
-  const handleStockMovement = async (data: {
-    productId: string; type: 'GUDANG_TO_MITRA' | 'MITRA_TO_GUDANG' | 'RETUR' | 'RUSAK' | 'HILANG';
-    mitraId: string; quantity: number; note?: string;
-  }) => {
-    const { productId, type, mitraId, quantity, note } = data;
-    const product = products.find((p) => p.id === productId);
-    const mitraObj = mitras.find((m) => m.id === mitraId);
-    if (!product || !mitraObj) { showToast('Produk atau mitra tidak valid!', 'error'); return; }
-    if (quantity <= 0) { showToast('Kuantitas pergerakan harus lebih besar dari 0!', 'error'); return; }
-
-    const sourceLoc: 'gudang' | 'mitra' = (type === 'MITRA_TO_GUDANG' || type === 'RETUR') ? 'mitra' : 'gudang';
-    const targetLoc: 'gudang' | 'mitra' = sourceLoc === 'gudang' ? 'mitra' : 'gudang';
-
-    const sourceStock = stocks.find((s) =>
-      sourceLoc === 'gudang'
-        ? s.productId === productId && s.locationType === 'gudang'
-        : s.productId === productId && s.locationType === 'mitra' && s.mitraId === mitraId
-    );
-
-    if (!sourceStock || sourceStock.quantity < quantity) {
-      showToast(`Stok asal (${sourceLoc}) tidak mencukupi! Tersedia: ${sourceStock?.quantity || 0} pcs`, 'error'); return;
-    }
-
-    let targetStock: ProductStock | undefined;
-    let newTargetStock: any = null;
-
-    if (type !== 'RUSAK' && type !== 'HILANG') {
-      targetStock = stocks.find((s) =>
-        targetLoc === 'gudang'
-          ? s.productId === productId && s.locationType === 'gudang'
-          : s.productId === productId && s.locationType === 'mitra' && s.mitraId === mitraId
-      );
-      if (!targetStock) {
-        newTargetStock = { id: `STK-${Date.now()}`, productId, locationType: targetLoc, mitraId: targetLoc === 'mitra' ? mitraId : null, quantity };
-      }
-    }
-
-    const id = `MOV-${Date.now()}`;
-    const trxNumber = `TRX-MOV-${Date.now().toString().slice(-6)}`;
-
-    try {
-      const res = await fetch('/api/movements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id, trxNumber, productId, type, mitraId, quantity, note: note || null,
-          sourceStockId: sourceStock.id,
-          sourceNewQty: sourceStock.quantity - quantity,
-          targetStockId: targetStock?.id ?? null,
-          targetNewQty: targetStock ? targetStock.quantity + quantity : null,
-          newTargetStock,
-        }),
-      });
-      const json = await res.json();
-      if (!json.success) { showToast(json.error || 'Gagal menyimpan pergerakan stok!', 'error'); return; }
-
-      showToast(`Pergerakan stok ${type.replace(/_/g, ' ')} berhasil!`);
-      setActiveModal(null);
-      await loadFromD1();
-    } catch (e) {
-      showToast('Koneksi ke database gagal saat pergerakan stok.', 'error');
-    }
-  };
-
-  // 6. Injeksi Modal
+  // 1. Injeksi Modal Usaha
   const handleCapital = async (data: { amount: number; note: string }) => {
     const { amount, note } = data;
-    if (amount <= 0) { showToast('Nominal modal harus lebih besar dari 0!', 'error'); return; }
+    if (amount <= 0) {
+      showToast('Nominal modal harus lebih besar dari 0!', 'error');
+      return;
+    }
 
     const id = `CAP-${Date.now()}`;
     const trxNumber = `TRX-CAP-${Date.now().toString().slice(-6)}`;
@@ -570,7 +225,7 @@ export default function DAPURZYApp() {
       const json = await res.json();
       if (!json.success) { showToast(json.error || 'Gagal menyimpan injeksi modal!', 'error'); return; }
 
-      showToast(`Injeksi modal ${formatRupiah(amount)} berhasil disimpan ke database!`);
+      showToast(`Injeksi modal ${formatRupiah(amount)} berhasil disimpan!`);
       setActiveModal(null);
       await loadFromD1();
     } catch (e) {
@@ -578,7 +233,151 @@ export default function DAPURZYApp() {
     }
   };
 
-  // 7a. Save Product
+  // 2. Batch Belanja & Produksi
+  const handleBatchProduction = async (data: {
+    itemsDescription: string;
+    totalCost: number;
+    productId: string;
+    producedQty: number;
+    calculatedHpp: number;
+    allocations: Array<{
+      mitraId: string;
+      quantity: number;
+      pricePerUnit: number;
+    }>;
+  }) => {
+    const { itemsDescription, totalCost, productId, producedQty, calculatedHpp, allocations } = data;
+    const batchSeq = String(purchaseBatches.length + 1).padStart(3, '0');
+    const batchId = `BATCH-${new Date().getFullYear()}-${batchSeq}`;
+    const id = `PB-${Date.now()}`;
+
+    try {
+      const res = await fetch('/api/purchases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          batchId,
+          itemsDescription,
+          totalCost,
+          productId,
+          producedQty,
+          calculatedHpp,
+          allocations: JSON.stringify(allocations),
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) { showToast(json.error || 'Gagal menyimpan batch produksi!', 'error'); return; }
+
+      showToast(`Batch ${batchId} berhasil disimpan! (${producedQty} pcs, HPP: ${formatRupiah(calculatedHpp)})`);
+      setActiveModal(null);
+      await loadFromD1();
+    } catch (e) {
+      showToast('Koneksi database gagal saat menyimpan batch.', 'error');
+    }
+  };
+
+  // 3. Rekap Setoran Mitra
+  const handleMitraSettlement = async (data: {
+    mitraId: string;
+    productId: string;
+    titipQty: number;
+    returnedQty: number;
+    soldQty: number;
+    pricePerUnit: number;
+    paymentMethod: string;
+  }) => {
+    const { mitraId, productId, titipQty, returnedQty, soldQty, pricePerUnit, paymentMethod } = data;
+    const product = products.find((p) => p.id === productId);
+    const mitraObj = mitras.find((m) => m.id === mitraId);
+
+    if (!product || !mitraObj) {
+      showToast('Produk atau mitra tidak valid!', 'error');
+      return;
+    }
+
+    const hpp = product.avgHpp || 0;
+    const totalAmount = soldQty * pricePerUnit;
+    const profit = totalAmount - (soldQty * hpp);
+
+    try {
+      const res = await fetch('/api/sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: `SALE-MITRA-${Date.now()}`,
+          trxNumber: `TRX-SETTLE-${Date.now().toString().slice(-6)}`,
+          productId,
+          mitraId,
+          titipQty,
+          returnedQty,
+          quantity: soldQty,
+          pricePerUnit,
+          hppPerUnit: hpp,
+          totalAmount,
+          profit,
+          saleType: 'CONSIGNMENT',
+          paymentMethod,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) { showToast(json.error || 'Gagal menyimpan setoran!', 'error'); return; }
+
+      showToast(`Rekap Setoran ${mitraObj.name} berhasil! (${soldQty} pcs laku, Omset: ${formatRupiah(totalAmount)})`);
+      setActiveModal(null);
+      await loadFromD1();
+    } catch (e) {
+      showToast('Koneksi database gagal saat menyimpan setoran.', 'error');
+    }
+  };
+
+  // 4. Setor Uang Toples Rumah 1-Tap (Opsi 1)
+  const handleHomeSalesDeposit = async (data: { amount: number; note: string }) => {
+    const { amount, note } = data;
+    if (amount <= 0) {
+      showToast('Nominal setor uang rumah harus lebih dari 0!', 'error');
+      return;
+    }
+
+    const defaultProd = products[0];
+    const productId = defaultProd?.id || 'P-HOME';
+    const hpp = defaultProd?.avgHpp || 0;
+    
+    // Profit estimate (default 40% margin if pure cash deposit)
+    const profit = Math.round(amount * 0.4);
+
+    try {
+      const res = await fetch('/api/sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: `SALE-HOME-${Date.now()}`,
+          trxNumber: `TRX-HOME-${Date.now().toString().slice(-6)}`,
+          productId,
+          mitraId: null,
+          titipQty: 0,
+          returnedQty: 0,
+          quantity: 1,
+          pricePerUnit: amount,
+          hppPerUnit: hpp,
+          totalAmount: amount,
+          profit,
+          saleType: 'DIRECT',
+          paymentMethod: 'CASH',
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) { showToast(json.error || 'Gagal menyimpan setor uang rumah!', 'error'); return; }
+
+      showToast(`Setoran Uang Rumah ${formatRupiah(amount)} berhasil disimpan! (${note})`);
+      setActiveModal(null);
+      await loadFromD1();
+    } catch (e) {
+      showToast('Koneksi database gagal.', 'error');
+    }
+  };
+
+  // 5. Save Product
   const handleSaveProduct = async (data: { id?: string; name: string; category: string; price: number }) => {
     if (!data.name || data.price <= 0) { showToast('Nama produk dan harga jual harus valid!', 'error'); return; }
 
@@ -592,23 +391,19 @@ export default function DAPURZYApp() {
       const json = await res.json();
       if (!json.success) { showToast(json.error || 'Gagal menyimpan produk!', 'error'); return; }
 
-      showToast(`Master produk "${data.name}" berhasil ${data.id ? 'diperbarui' : 'ditambahkan'}!`);
+      showToast(`Master produk "${data.name}" berhasil disimpan!`);
       setEditingProduct(null);
       setActiveModal(null);
       await loadFromD1();
     } catch (e) {
-      showToast('Koneksi ke database gagal saat menyimpan produk.', 'error');
+      showToast('Koneksi database gagal.', 'error');
     }
   };
 
-  // 7b. Delete Product
+  // 6. Delete Product
   const handleDeleteProduct = async (productId: string) => {
     const product = products.find((p) => p.id === productId);
     if (!product) return;
-
-    const summary = getProductStockSummary(productId);
-    if (summary.total > 0) { showToast(`Tidak bisa menghapus "${product.name}" karena masih ada sisa stok (${summary.total} pcs)!`, 'error'); return; }
-
     if (!confirm(`Apakah Anda yakin ingin menghapus master produk "${product.name}"?`)) return;
 
     try {
@@ -619,12 +414,19 @@ export default function DAPURZYApp() {
       showToast(`Master produk "${product.name}" telah dihapus!`);
       await loadFromD1();
     } catch (e) {
-      showToast('Koneksi ke database gagal saat menghapus produk.', 'error');
+      showToast('Koneksi database gagal.', 'error');
     }
   };
 
-  // 8a. Save Mitra
-  const handleSaveMitra = async (data: { id?: string; name: string; type: string; whatsapp: string; address: string }) => {
+  // 7. Save Mitra (with custom prices)
+  const handleSaveMitra = async (data: {
+    id?: string;
+    name: string;
+    type: string;
+    whatsapp: string;
+    address: string;
+    customPrices?: Record<string, number>;
+  }) => {
     if (!data.name) { showToast('Nama mitra harus diisi!', 'error'); return; }
 
     const id = data.id || `M-${Date.now()}`;
@@ -632,28 +434,31 @@ export default function DAPURZYApp() {
       const res = await fetch('/api/mitras', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, name: data.name, type: data.type || 'Warung', whatsapp: data.whatsapp || '', address: data.address || '' }),
+        body: JSON.stringify({
+          id,
+          name: data.name,
+          type: data.type || 'Warung',
+          whatsapp: data.whatsapp || '',
+          address: data.address || '',
+          customPrices: data.customPrices || {},
+        }),
       });
       const json = await res.json();
       if (!json.success) { showToast(json.error || 'Gagal menyimpan mitra!', 'error'); return; }
 
-      showToast(`Mitra "${data.name}" berhasil ${data.id ? 'diperbarui' : 'ditambahkan'}!`);
+      showToast(`Mitra "${data.name}" berhasil disimpan!`);
       setEditingMitra(null);
       setActiveModal(null);
       await loadFromD1();
     } catch (e) {
-      showToast('Koneksi ke database gagal saat menyimpan mitra.', 'error');
+      showToast('Koneksi database gagal.', 'error');
     }
   };
 
-  // 8b. Delete Mitra
+  // 8. Delete Mitra
   const handleDeleteMitra = async (mitraId: string) => {
     const mitra = mitras.find((m) => m.id === mitraId);
     if (!mitra) return;
-
-    const activeMitraStock = stocks.filter((s) => s.locationType === 'mitra' && s.mitraId === mitraId && s.quantity > 0);
-    if (activeMitraStock.length > 0) { showToast(`Tidak bisa menghapus "${mitra.name}" karena masih ada stok titipan aktif!`, 'error'); return; }
-
     if (!confirm(`Apakah Anda yakin ingin menghapus master mitra "${mitra.name}"?`)) return;
 
     try {
@@ -664,41 +469,38 @@ export default function DAPURZYApp() {
       showToast(`Mitra "${mitra.name}" telah dihapus!`);
       await loadFromD1();
     } catch (e) {
-      showToast('Koneksi ke database gagal saat menghapus mitra.', 'error');
+      showToast('Koneksi database gagal.', 'error');
     }
   };
 
-  // 9. Factory Hard Reset — hapus semua data dari D1
+  // 9. Factory Reset
   const handleFactoryResetAllData = async () => {
     try {
       const res = await fetch('/api/reset', { method: 'POST' });
       const json = await res.json();
       if (!json.success) { showToast(json.error || 'Gagal menghapus data!', 'error'); return; }
 
-      showToast('Seluruh data aplikasi berhasil dihapus 100% dari database!', 'success');
+      showToast('Seluruh data aplikasi berhasil dihapus 100%!', 'success');
       setActiveModal(null);
       await loadFromD1();
     } catch (e) {
-      showToast('Koneksi ke database gagal saat reset data.', 'error');
+      showToast('Koneksi database gagal.', 'error');
     }
   };
 
-  // IF PIN IS LOCKED, DISPLAY PIN LOCK SCREEN OVERLAY
   if (!isUnlocked) {
     return <PinLockScreen onUnlockSuccess={handleUnlockSuccess} />;
   }
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-20 sm:pb-24 select-none relative border-x border-slate-200">
-      {/* TOAST NOTIFICATION */}
       <Toast notification={notification} />
 
-      {/* LOADING OVERLAY */}
       {isLoading && (
-        <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex items-center justify-center">
+        <div className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-xs flex items-center justify-center">
           <div className="bg-white rounded-2xl p-6 flex flex-col items-center gap-3 shadow-2xl">
-            <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm font-semibold text-slate-700">Memuat data dari database...</p>
+            <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs sm:text-sm font-bold text-slate-700">Memuat data Dapurzy...</p>
           </div>
         </div>
       )}
@@ -706,10 +508,10 @@ export default function DAPURZYApp() {
       {/* HEADER UTAMA APP */}
       <Navbar
         onOpenDrawer={() => setIsDrawerOpen(true)}
-        onOpenPurchaseModal={() => setActiveModal('purchase')}
+        onOpenPurchaseModal={() => setActiveModal('batch_production')}
       />
 
-      {/* DRAWER NAVIGATION */}
+      {/* DRAWER MENU */}
       <DrawerMenu
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
@@ -722,76 +524,176 @@ export default function DAPURZYApp() {
       />
 
       {/* MAIN CONTENT AREA */}
-      <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto p-2.5 sm:p-4 lg:p-6 space-y-3 sm:space-y-4">
+      <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto p-2.5 sm:p-4 lg:p-6 space-y-4">
+        {/* TAB 1: DASHBOARD */}
         {activeTab === 'dashboard' && (
           <DashboardModule
-            cashBalance={cashBalance}
-            activeCapital={activeCapital}
-            stockValuation={stockValuation}
-            todayStats={todayStats}
+            operatingCapital={operatingCapital}
+            netProfitPool={netProfitPool}
+            totalGrossOmzet={totalGrossOmzet}
             purchaseBatches={purchaseBatches}
             products={products}
-            stocks={stocks}
-            transactions={transactions}
+            mitras={mitras}
+            sales={sales}
             onOpenModal={(modal) => setActiveModal(modal)}
-            getProductStockSummary={getProductStockSummary}
           />
         )}
 
-        {activeTab === 'batch_laporan' && (
-          <BatchModule
-            purchaseBatches={purchaseBatches}
-            products={products}
-            onOpenPurchaseModal={() => setActiveModal('purchase')}
-            onOpenProductionModal={() => setActiveModal('production')}
-          />
+        {/* TAB 2: MITRA & SETORAN WITH ANALYTICS */}
+        {activeTab === 'mitra' && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            {/* Header Controls */}
+            <div className="flex flex-wrap justify-between items-center bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs gap-3">
+              <div>
+                <h2 className="font-black text-slate-800 text-sm sm:text-base flex items-center gap-1.5">
+                  <Users className="w-5 h-5 text-amber-600" /> Konsinyasi & Rekap Setoran Mitra
+                </h2>
+                <p className="text-[11px] text-slate-500">Omset harian, bulanan & record total kerjasama</p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 items-center">
+                {/* Period Filter Switcher */}
+                <div className="flex bg-slate-100 p-1 rounded-xl gap-1 text-xs font-bold">
+                  <button
+                    onClick={() => setMitraTabPeriod('today')}
+                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                      mitraTabPeriod === 'today' ? 'bg-amber-500 text-white font-extrabold shadow-xs' : 'text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    Hari Ini
+                  </button>
+                  <button
+                    onClick={() => setMitraTabPeriod('month')}
+                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                      mitraTabPeriod === 'month' ? 'bg-amber-500 text-white font-extrabold shadow-xs' : 'text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    Bulan Ini
+                  </button>
+                  <button
+                    onClick={() => setMitraTabPeriod('all')}
+                    className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                      mitraTabPeriod === 'all' ? 'bg-amber-500 text-white font-extrabold shadow-xs' : 'text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    Lifetime
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => { setEditingMitra(null); setActiveModal('mitra'); }}
+                  className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-3 py-2 rounded-xl shadow-xs active:scale-95 transition cursor-pointer flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Tambah Mitra</span>
+                </button>
+                <button
+                  onClick={() => setActiveModal('settlement')}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-2 rounded-xl shadow-xs active:scale-95 transition cursor-pointer flex items-center gap-1"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Rekap Setoran</span>
+                </button>
+              </div>
+            </div>
+
+            {/* LIST MITRA CARDS WITH ANALYTICS BADGES */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {mitras.length === 0 ? (
+                <div className="col-span-2 text-center py-8 bg-white rounded-2xl border border-slate-200 text-slate-400 text-xs">
+                  Belum ada mitra. Klik <b>"Tambah Mitra"</b> untuk menambahkan warung/kantin titipan!
+                </div>
+              ) : (
+                mitras.map((m) => {
+                  const displayedOmzet =
+                    mitraTabPeriod === 'today'
+                      ? m.todayOmzet || 0
+                      : mitraTabPeriod === 'month'
+                      ? m.monthlyOmzet || 0
+                      : m.lifetimeOmzet || 0;
+
+                  return (
+                    <div key={m.id} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3 relative">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md">
+                            {m.type}
+                          </span>
+                          <h3 className="font-black text-slate-800 text-sm mt-1">{m.name}</h3>
+                          {m.address && <p className="text-xs text-slate-500">{m.address}</p>}
+                          {m.whatsapp && <p className="text-[11px] text-emerald-700 font-medium">WA: {m.whatsapp}</p>}
+                        </div>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => { setEditingMitra(m); setActiveModal('mitra'); }}
+                            className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg hover:bg-blue-100 cursor-pointer"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMitra(m.id)}
+                            className="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg hover:bg-rose-100 cursor-pointer"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* MITRA ANALYTICS DISPLAY BADGE */}
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold block uppercase">
+                            Omset ({mitraTabPeriod === 'today' ? 'Hari Ini' : mitraTabPeriod === 'month' ? 'Bulan Ini' : 'Lifetime'})
+                          </span>
+                          <span className="font-black text-emerald-800 text-sm">{formatRupiah(displayedOmzet)}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 font-bold block uppercase">Total Barang Laku</span>
+                          <span className="font-black text-slate-800 text-sm">{m.totalSoldQty || 0} pcs</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* SETORAN HISTORY TABLE */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+              <h3 className="font-extrabold text-slate-800 text-xs sm:text-sm flex items-center gap-1.5">
+                <ShoppingBag className="w-4 h-4 text-emerald-600" /> Riwayat Rekap Setoran Diterima
+              </h3>
+              {sales.length === 0 ? (
+                <p className="text-xs text-slate-400 italic">Belum ada riwayat setoran.</p>
+              ) : (
+                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                  {sales.map((s) => {
+                    const product = products.find((p) => p.id === s.productId);
+                    const mitra = mitras.find((m) => m.id === s.mitraId);
+                    return (
+                      <div key={s.id} className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
+                        <div>
+                          <p className="font-bold text-slate-800">
+                            {s.saleType === 'DIRECT' ? '🏡 Setoran Toples Rumah' : `🤝 Setoran: ${mitra?.name || 'Mitra'}`}
+                          </p>
+                          <p className="text-[11px] text-slate-500">
+                            {product?.name || 'Produk'} ({s.quantity} pcs laku) • {formatDate(s.createdAt)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-black text-emerald-800">{formatRupiah(s.totalAmount)}</p>
+                          <p className="text-[10px] text-amber-700 font-bold">Profit: {formatRupiah(s.profit)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
-        {activeTab === 'produksi' && (
-          <ProductionModule
-            purchaseBatches={purchaseBatches}
-            products={products}
-            onOpenProductionModal={() => setActiveModal('production')}
-          />
-        )}
-
-        {activeTab === 'pergerakan' && (
-          <MovementsModule
-            transactions={transactions}
-            onOpenMovementModal={() => setActiveModal('movement')}
-            onOpenSettlementModal={() => setActiveModal('settlement')}
-          />
-        )}
-
-        {activeTab === 'penjualan' && (
-          <SalesModule
-            transactions={transactions}
-            onOpenSaleModal={() => setActiveModal('sale')}
-          />
-        )}
-
-        {activeTab === 'stok' && (
-          <StockModule
-            products={products}
-            mitras={mitras}
-            stocks={stocks}
-          />
-        )}
-
-        {activeTab === 'traceability' && (
-          <TraceabilityModule
-            cashBalance={cashBalance}
-            activeCapital={activeCapital}
-            stockValuation={stockValuation}
-            todayStats={todayStats}
-            purchaseBatches={purchaseBatches}
-            products={products}
-            mitras={mitras}
-            auditLogs={auditLogs}
-            transactions={transactions}
-          />
-        )}
-
+        {/* TAB 3: BATCH & MASTER */}
         {activeTab === 'master' && (
           <MasterModule
             products={products}
@@ -807,35 +709,12 @@ export default function DAPURZYApp() {
       </main>
 
       {/* FORM MODAL DIALOGS */}
-      <PurchaseModal
-        isOpen={activeModal === 'purchase'}
-        onClose={() => setActiveModal(null)}
-        cashBalance={cashBalance}
-        onSubmit={handleCreatePurchaseBatch}
-      />
-
-      <ProductionModal
-        isOpen={activeModal === 'production'}
-        onClose={() => setActiveModal(null)}
-        purchaseBatches={purchaseBatches}
-        products={products}
-        onSubmit={handleProduceFromBatch}
-      />
-
-      <SaleModal
-        isOpen={activeModal === 'sale'}
+      <BatchProductionModal
+        isOpen={activeModal === 'batch_production'}
         onClose={() => setActiveModal(null)}
         products={products}
         mitras={mitras}
-        onSubmit={handleCreateSale}
-      />
-
-      <MovementModal
-        isOpen={activeModal === 'movement'}
-        onClose={() => setActiveModal(null)}
-        products={products}
-        mitras={mitras}
-        onSubmit={handleStockMovement}
+        onSubmit={handleBatchProduction}
       />
 
       <MitraSettlementModal
@@ -843,8 +722,13 @@ export default function DAPURZYApp() {
         onClose={() => setActiveModal(null)}
         products={products}
         mitras={mitras}
-        stocks={stocks}
         onSubmit={handleMitraSettlement}
+      />
+
+      <HomeSalesModal
+        isOpen={activeModal === 'home_sales'}
+        onClose={() => setActiveModal(null)}
+        onSubmit={handleHomeSalesDeposit}
       />
 
       <CapitalModal
@@ -864,6 +748,7 @@ export default function DAPURZYApp() {
       <MitraModal
         isOpen={activeModal === 'mitra'}
         onClose={() => { setActiveModal(null); setEditingMitra(null); }}
+        products={products}
         initialData={editingMitra}
         onSubmit={handleSaveMitra}
       />
@@ -874,7 +759,7 @@ export default function DAPURZYApp() {
         onConfirmReset={handleFactoryResetAllData}
       />
 
-      {/* MOBILE & TABLET & DESKTOP FLOATING BOTTOM NAVIGATION */}
+      {/* MOBILE FLOATING BOTTOM NAVIGATION */}
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
     </div>
   );

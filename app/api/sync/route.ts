@@ -24,8 +24,9 @@ export async function GET(request: Request) {
       success: true,
       source: 'D1_Initializing',
       data: {
-        cashBalance: 0,
-        activeCapital: 0,
+        operatingCapital: 0,
+        netProfitPool: 0,
+        totalGrossOmzet: 0,
         products: [],
         mitras: [],
         purchaseBatches: [],
@@ -50,24 +51,74 @@ export async function GET(request: Request) {
       db.prepare('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 100').all().catch(() => ({ results: [] })),
     ]);
 
-    // Calculate total cash balance from capital logs + sales - purchases
-    const totalCapital = (capitalLogs.results || []).reduce((s: number, r: any) => s + (r.amount || 0), 0);
-    const totalSales = (sales.results || []).reduce((s: number, r: any) => s + (r.total_amount || 0), 0);
-    const totalBatchCost = (batches.results || []).reduce((s: number, r: any) => s + (r.total_cost || 0), 0);
-    const cashBalance = totalCapital + totalSales - totalBatchCost;
+    const salesList = sales.results || [];
+    const batchesList = batches.results || [];
+    const logsList = capitalLogs.results || [];
+    const mitrasList = mitras.results || [];
+
+    // 1. Total Gross Omzet
+    const totalGrossOmzet = salesList.reduce((sum: number, s: any) => sum + (Number(s.total_amount) || 0), 0);
+
+    // 2. Net Profit Pool
+    const netProfitPool = salesList.reduce((sum: number, s: any) => sum + (Number(s.profit) || 0), 0);
+
+    // 3. Operating Capital
+    const injectionsAndAdjustments = logsList.reduce((sum: number, l: any) => sum + (Number(l.amount) || 0), 0);
+    const operatingCapital = injectionsAndAdjustments;
+
+    // 4. Compute Mitra Omzet Analytics (Lifetime, Monthly, Today)
+    const now = new Date();
+    const todayStr = now.toDateString();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const formattedMitras = mitrasList.map((m: any) => {
+      let lifetimeOmzet = 0;
+      let monthlyOmzet = 0;
+      let todayOmzet = 0;
+      let totalSoldQty = 0;
+
+      salesList.forEach((s: any) => {
+        if (s.mitra_id === m.id) {
+          const amt = Number(s.total_amount) || 0;
+          const qty = Number(s.quantity) || 0;
+          lifetimeOmzet += amt;
+          totalSoldQty += qty;
+
+          if (s.created_at) {
+            const sDate = new Date(s.created_at);
+            if (sDate.toDateString() === todayStr) {
+              todayOmzet += amt;
+            }
+            if (sDate.getMonth() === currentMonth && sDate.getFullYear() === currentYear) {
+              monthlyOmzet += amt;
+            }
+          }
+        }
+      });
+
+      return {
+        ...m,
+        lifetimeOmzet,
+        monthlyOmzet,
+        todayOmzet,
+        totalSoldQty,
+      };
+    });
 
     return NextResponse.json({
       success: true,
       source: 'D1_Remote',
       data: {
-        cashBalance,
-        activeCapital: totalCapital,
+        operatingCapital: Math.max(0, operatingCapital),
+        netProfitPool: Math.max(0, netProfitPool),
+        totalGrossOmzet: Math.max(0, totalGrossOmzet),
         products: products.results || [],
-        mitras: mitras.results || [],
-        purchaseBatches: batches.results || [],
+        mitras: formattedMitras,
+        purchaseBatches: batchesList,
         stocks: stocks.results || [],
-        sales: sales.results || [],
-        capitalLogs: capitalLogs.results || [],
+        sales: salesList,
+        capitalLogs: logsList,
         movements: movements.results || [],
         auditLogs: auditLogs.results || [],
       },
@@ -77,8 +128,9 @@ export async function GET(request: Request) {
       success: true,
       source: 'D1_Fallback',
       data: {
-        cashBalance: 0,
-        activeCapital: 0,
+        operatingCapital: 0,
+        netProfitPool: 0,
+        totalGrossOmzet: 0,
         products: [],
         mitras: [],
         purchaseBatches: [],
@@ -95,3 +147,5 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return NextResponse.json({ success: true });
 }
+
+

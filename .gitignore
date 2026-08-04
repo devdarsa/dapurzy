@@ -27,7 +27,6 @@ yarn-error.log*
 .vercel
 .opennext
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-node_modules
+# wrangler
+.wrangler
+

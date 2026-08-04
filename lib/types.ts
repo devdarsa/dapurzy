@@ -14,8 +14,19 @@ export interface Mitra {
   type: string; // Warung, Kantin, Toko, Reseller
   whatsapp?: string | null;
   address?: string | null;
+  customPrices?: Record<string, number> | string | null; // { [productId]: price }
   status: 'active' | 'inactive';
   createdAt?: string;
+  lifetimeOmzet?: number;
+  monthlyOmzet?: number;
+  todayOmzet?: number;
+  totalSoldQty?: number;
+}
+
+export interface BatchAllocation {
+  mitraId: string | null; // null for Jual di Rumah
+  quantity: number;
+  pricePerUnit: number;
 }
 
 export interface PurchaseBatch {
@@ -24,10 +35,11 @@ export interface PurchaseBatch {
   itemsDescription: string;
   totalCost: number;
   supplier?: string | null;
-  status: 'pending_production' | 'produced';
+  status: 'pending_production' | 'produced' | 'completed';
   productId?: string | null;
   producedQty: number;
   calculatedHpp: number;
+  allocations?: BatchAllocation[] | string | null;
   date?: string;
   createdAt?: string;
 }
@@ -55,13 +67,17 @@ export interface StockMovement {
 export interface Sale {
   id: string;
   trxNumber: string;
-  saleType: 'DIRECT' | 'MITRA';
+  saleType: 'DIRECT' | 'MITRA' | 'CONSIGNMENT';
   mitraId?: string | null;
   productId: string;
-  quantity: number;
+  batchId?: string | null;
+  titipQty?: number;
+  returnedQty?: number;
+  quantity: number; // soldQty
   pricePerUnit: number;
   totalAmount: number;
   hppPerUnit: number;
+  recoveredCost?: number; // Cost returned to capital pool
   profit: number;
   paymentMethod: 'CASH' | 'QRIS' | string;
   createdAt?: string;
@@ -70,6 +86,7 @@ export interface Sale {
 export interface CapitalLog {
   id: string;
   trxNumber: string;
+  type?: 'INJECTION' | 'HPP_RECOVERY' | 'BELANJA_EXPENSE' | 'PROFIT_WITHDRAWAL' | 'ADJUSTMENT';
   amount: number;
   note?: string | null;
   createdAt?: string;
@@ -83,12 +100,14 @@ export interface AuditLog {
   createdAt?: string;
 }
 
+export type PeriodFilter = 'today' | 'month' | 'all';
+
 export interface DashboardStats {
-  cashBalance: number;
-  activeCapital: number;
-  stockValuation: number;
-  todayOmzet: number;
-  todayNetProfit: number;
-  todayProcurementCost: number;
-  pendingBatchesCount: number;
+  operatingCapital: number;   // Kas Modal Operasional (Berputar & Terisi Kembali)
+  netProfitPool: number;      // Kantong Profit Bersih (Siap Ditarik / Gaji)
+  totalGrossOmzet: number;    // Total Omset Kotor
+  totalBatchesCount: number;
+  totalMitraCount: number;
 }
+
+

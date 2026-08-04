@@ -23,7 +23,18 @@ export async function GET(request: Request) {
 
   try {
     const result = await db.prepare('SELECT * FROM mitras ORDER BY created_at ASC').all();
-    return NextResponse.json({ success: true, data: result.results || [] });
+    const formatted = (result.results || []).map((row: any) => {
+      let customPrices = {};
+      if (row.custom_prices) {
+        try {
+          customPrices = typeof row.custom_prices === 'string' ? JSON.parse(row.custom_prices) : row.custom_prices;
+        } catch (e) {
+          customPrices = {};
+        }
+      }
+      return { ...row, customPrices };
+    });
+    return NextResponse.json({ success: true, data: formatted });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -36,21 +47,23 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, name, type, whatsapp, address } = body;
+    const { id, name, type, whatsapp, address, customPrices } = body;
 
     if (!id || !name) {
       return NextResponse.json({ success: false, error: 'Data mitra tidak lengkap' }, { status: 400 });
     }
 
+    const customPricesJson = customPrices ? (typeof customPrices === 'string' ? customPrices : JSON.stringify(customPrices)) : '{}';
+
     const existing = await db.prepare('SELECT id FROM mitras WHERE id = ?').bind(id).first();
 
     if (existing) {
-      await db.prepare('UPDATE mitras SET name = ?, type = ?, whatsapp = ?, address = ? WHERE id = ?')
-        .bind(name, type || 'Warung', whatsapp || '', address || '', id)
+      await db.prepare('UPDATE mitras SET name = ?, type = ?, whatsapp = ?, address = ?, custom_prices = ? WHERE id = ?')
+        .bind(name, type || 'Warung', whatsapp || '', address || '', customPricesJson, id)
         .run();
     } else {
-      await db.prepare('INSERT INTO mitras (id, name, type, whatsapp, address, status) VALUES (?, ?, ?, ?, ?, ?)')
-        .bind(id, name, type || 'Warung', whatsapp || '', address || '', 'active')
+      await db.prepare('INSERT INTO mitras (id, name, type, whatsapp, address, custom_prices, status) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .bind(id, name, type || 'Warung', whatsapp || '', address || '', customPricesJson, 'active')
         .run();
     }
 
@@ -84,3 +97,4 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+

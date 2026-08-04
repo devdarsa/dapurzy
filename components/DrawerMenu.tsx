@@ -4,12 +4,8 @@ import React from 'react';
 import {
   X,
   Home,
+  Users,
   Layers,
-  ArrowLeftRight,
-  ShoppingCart,
-  Package,
-  FileText,
-  Database,
   PlusCircle,
   Trash2,
   Lock,
@@ -57,8 +53,8 @@ export default function DrawerMenu({
                 className="w-7 h-7 rounded-lg object-cover shadow-xs border border-amber-400"
               />
               <div>
-                <h2 className="font-black text-base text-emerald-900 leading-tight">DAPURZY v1.2</h2>
-                <p className="text-[10px] text-slate-500">Batch HPP & Consignment Engine</p>
+                <h2 className="font-black text-base text-emerald-900 leading-tight">DAPURZY Ultra-Lean</h2>
+                <p className="text-[10px] text-slate-500">Batch, Consignment & Auto-Sales</p>
               </div>
             </div>
             <button
@@ -69,96 +65,31 @@ export default function DrawerMenu({
             </button>
           </div>
 
-          <nav className="space-y-1 text-xs font-bold text-slate-700">
+          <nav className="space-y-1.5 text-xs font-bold text-slate-700">
             <button
               onClick={() => {
                 setActiveTab('dashboard');
                 onClose();
               }}
-              className={`w-full flex items-center space-x-2.5 p-2.5 rounded-xl transition cursor-pointer ${
-                activeTab === 'dashboard' ? 'bg-emerald-50 text-emerald-800 font-extrabold' : 'hover:bg-slate-50'
+              className={`w-full flex items-center space-x-2.5 p-3 rounded-xl transition cursor-pointer ${
+                activeTab === 'dashboard' ? 'bg-emerald-50 text-emerald-800 font-extrabold border border-emerald-200' : 'hover:bg-slate-50'
               }`}
             >
-              <Home className="w-4 h-4 text-emerald-600" />
-              <span>Beranda Dashboard</span>
+              <Home className="w-4.5 h-4.5 text-emerald-600" />
+              <span>Beranda & Dompet Kas</span>
             </button>
 
             <button
               onClick={() => {
-                setActiveTab('batch_laporan');
+                setActiveTab('mitra');
                 onClose();
               }}
-              className={`w-full flex items-center space-x-2.5 p-2.5 rounded-xl transition cursor-pointer ${
-                activeTab === 'batch_laporan' ? 'bg-amber-50 text-amber-900 font-extrabold' : 'hover:bg-slate-50'
+              className={`w-full flex items-center space-x-2.5 p-3 rounded-xl transition cursor-pointer ${
+                activeTab === 'mitra' ? 'bg-amber-50 text-amber-900 font-extrabold border border-amber-200' : 'hover:bg-slate-50'
               }`}
             >
-              <Layers className="w-4 h-4 text-amber-600" />
-              <span>Batch Belanja & Laporan</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveTab('produksi');
-                onClose();
-              }}
-              className={`w-full flex items-center space-x-2.5 p-2.5 rounded-xl transition cursor-pointer ${
-                activeTab === 'produksi' ? 'bg-purple-50 text-purple-900 font-extrabold' : 'hover:bg-slate-50'
-              }`}
-            >
-              <Package className="w-4 h-4 text-purple-600" />
-              <span>Modul Produksi & HPP</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveTab('pergerakan');
-                onClose();
-              }}
-              className={`w-full flex items-center space-x-2.5 p-2.5 rounded-xl transition cursor-pointer ${
-                activeTab === 'pergerakan' ? 'bg-blue-50 text-blue-900 font-extrabold' : 'hover:bg-slate-50'
-              }`}
-            >
-              <ArrowLeftRight className="w-4 h-4 text-blue-600" />
-              <span>Pergerakan Stok Konsinyasi</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveTab('penjualan');
-                onClose();
-              }}
-              className={`w-full flex items-center space-x-2.5 p-2.5 rounded-xl transition cursor-pointer ${
-                activeTab === 'penjualan' ? 'bg-emerald-50 text-emerald-900 font-extrabold' : 'hover:bg-slate-50'
-              }`}
-            >
-              <ShoppingCart className="w-4 h-4 text-emerald-600" />
-              <span>Penjualan Direct & Mitra</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveTab('stok');
-                onClose();
-              }}
-              className={`w-full flex items-center space-x-2.5 p-2.5 rounded-xl transition cursor-pointer ${
-                activeTab === 'stok' ? 'bg-purple-50 text-purple-900 font-extrabold' : 'hover:bg-slate-50'
-              }`}
-            >
-              <Package className="w-4 h-4 text-purple-600" />
-              <span>Stok Real-Time Multi-Lokasi</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveTab('traceability');
-                onClose();
-              }}
-              className={`w-full flex items-center space-x-2.5 p-2.5 rounded-xl transition cursor-pointer ${
-                activeTab === 'traceability' ? 'bg-emerald-50 text-emerald-900 font-extrabold' : 'hover:bg-slate-50'
-              }`}
-            >
-              <FileText className="w-4 h-4 text-emerald-600" />
-              <span>Audit Keuangan & Export WA</span>
+              <Users className="w-4.5 h-4.5 text-amber-600" />
+              <span>Mitra & Rekap Setoran</span>
             </button>
 
             <button
@@ -166,12 +97,12 @@ export default function DrawerMenu({
                 setActiveTab('master');
                 onClose();
               }}
-              className={`w-full flex items-center space-x-2.5 p-2.5 rounded-xl transition cursor-pointer ${
-                activeTab === 'master' ? 'bg-slate-100 text-slate-900 font-extrabold' : 'hover:bg-slate-50'
+              className={`w-full flex items-center space-x-2.5 p-3 rounded-xl transition cursor-pointer ${
+                activeTab === 'master' ? 'bg-purple-50 text-purple-900 font-extrabold border border-purple-200' : 'hover:bg-slate-50'
               }`}
             >
-              <Database className="w-4 h-4 text-slate-600" />
-              <span>Master Data (Produk & Mitra)</span>
+              <Layers className="w-4.5 h-4.5 text-purple-600" />
+              <span>Batch Produksi & Master Produk</span>
             </button>
           </nav>
         </div>
@@ -198,7 +129,7 @@ export default function DrawerMenu({
               className="w-full flex items-center space-x-2 bg-slate-800 hover:bg-slate-900 text-white p-2.5 rounded-xl shadow-xs active:scale-95 transition cursor-pointer"
             >
               <Lock className="w-4 h-4 text-amber-400" />
-              <span>Kunci Application & Purge Cache</span>
+              <span>Kunci Aplikasi (PIN Lock)</span>
             </button>
           )}
 
@@ -214,10 +145,11 @@ export default function DrawerMenu({
           </button>
 
           <p className="text-[9px] text-center text-slate-400 pt-1">
-            DAPURZY Blueprint v1.2 PWA System • Masa Aktif PIN 3 Hari
+            DAPURZY Ultra-Lean PWA System • PIN Security Enabled
           </p>
         </div>
       </div>
     </div>
   );
 }
+
