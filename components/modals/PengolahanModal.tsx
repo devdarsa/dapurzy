@@ -11,6 +11,8 @@ interface PengolahanModalProps {
   onClose: () => void;
   availableBatches: PurchaseBatch[];
   products: Product[];
+  // D2 FIX: Jika diisi, batch ini akan otomatis dipilih di dropdown saat modal dibuka
+  initialBatchId?: string;
   onSubmit: (data: {
     batchId: string;
     productId: string;
@@ -24,6 +26,7 @@ export default function PengolahanModal({
   onClose,
   availableBatches,
   products,
+  initialBatchId,
   onSubmit,
 }: PengolahanModalProps) {
   const [selectedBatchId, setSelectedBatchId] = useState<string>('');
@@ -33,7 +36,14 @@ export default function PengolahanModal({
   useEffect(() => {
     if (isOpen) {
       setProducedQtyInput('');
-      if (availableBatches.length > 0) {
+      // D2 FIX: Jika initialBatchId diberikan, gunakan sebagai pilihan awal
+      // Jika tidak ditemukan di daftar tersedia, fallback ke batch pertama
+      const targetBatch = initialBatchId
+        ? availableBatches.find((b) => b.batchId === initialBatchId)
+        : null;
+      if (targetBatch) {
+        setSelectedBatchId(targetBatch.batchId);
+      } else if (availableBatches.length > 0) {
         setSelectedBatchId(availableBatches[0].batchId);
       } else {
         setSelectedBatchId('');
@@ -42,7 +52,7 @@ export default function PengolahanModal({
         setSelectedProductId(products[0].id);
       }
     }
-  }, [isOpen, availableBatches, products]);
+  }, [isOpen, availableBatches, products, initialBatchId]);
 
   const selectedBatch = useMemo(
     () => availableBatches.find((b) => b.batchId === selectedBatchId),

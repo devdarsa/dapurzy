@@ -1,20 +1,7 @@
 import { NextResponse } from 'next/server';
+import { getDB } from '@/lib/db';
 
 export const runtime = 'edge';
-
-function getDB(request: Request): any {
-  const env = (process as any).env || {};
-  const reqEnv = (request as any).env || (request as any).cf?.env || {};
-  const globEnv = (globalThis as any).env || (globalThis as any) || {};
-
-  return (
-    env.DB ||
-    reqEnv.DB ||
-    globEnv.DB ||
-    (globalThis as any).__D1_DB ||
-    null
-  );
-}
 
 // GET: Load all app data from D1
 export async function GET(request: Request) {
@@ -62,9 +49,9 @@ export async function GET(request: Request) {
     // 2. Net Profit Pool
     const netProfitPool = salesList.reduce((sum: number, s: any) => sum + (Number(s.profit) || 0), 0);
 
-    // 3. Operating Capital
-    const injectionsAndAdjustments = logsList.reduce((sum: number, l: any) => sum + (Number(l.amount) || 0), 0);
-    const operatingCapital = injectionsAndAdjustments;
+    // 3. Operating Capital = SUM semua capital_logs.amount
+    // (INJECTION +, BELANJA_EXPENSE -, HPP_RECOVERY +, PROFIT_WITHDRAWAL -, ADJUSTMENT ±)
+    const operatingCapital = logsList.reduce((sum: number, l: any) => sum + (Number(l.amount) || 0), 0);
 
     // 4. Compute Mitra Omzet Analytics (Lifetime, Monthly, Today)
     const now = new Date();
@@ -134,28 +121,19 @@ export async function GET(request: Request) {
       },
     });
   } catch (error: any) {
-    return NextResponse.json({
-      success: true,
-      source: 'D1_Fallback',
-      data: {
-        operatingCapital: 0,
-        netProfitPool: 0,
-        totalGrossOmzet: 0,
-        products: [],
-        mitras: [],
-        purchaseBatches: [],
-        stocks: [],
-        sales: [],
-        capitalLogs: [],
-        movements: [],
-        auditLogs: [],
+    // BUG #6 FIX: Error handler sekarang mengembalikan success: false agar frontend
+    // tahu ada error nyata dan tidak menganggap data kosong sebagai kondisi normal.
+    return NextResponse.json(
+      {
+        success: false,
+        source: 'D1_Error',
+        error: error.message || 'Gagal mengambil data dari D1',
       },
-    });
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: Request) {
   return NextResponse.json({ success: true });
 }
-
-

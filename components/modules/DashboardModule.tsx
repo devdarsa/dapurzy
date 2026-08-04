@@ -37,6 +37,8 @@ interface DashboardModuleProps {
       | 'product'
       | 'mitra'
   ) => void;
+  // D2 FIX: Callback untuk membuka PengolahanModal dengan batch tertentu sudah pre-selected
+  onOpenPengolahanForBatch?: (batchId: string) => void;
 }
 
 export default function DashboardModule({
@@ -49,6 +51,7 @@ export default function DashboardModule({
   sales,
   stocks = [],
   onOpenModal,
+  onOpenPengolahanForBatch,
 }: DashboardModuleProps) {
   const [period, setPeriod] = useState<PeriodFilter>('all');
 
@@ -115,8 +118,9 @@ export default function DashboardModule({
   const activeBatches = purchaseBatches.slice(0, 6);
 
   // Available batches count (status Tersedia)
+  // D6 FIX: Hapus cek 'pending_production' — enum sudah disederhanakan ke ['tersedia', 'habis']
   const tersediaBatchesCount = useMemo(() => {
-    return purchaseBatches.filter((b) => b.status === 'tersedia' || b.status === 'pending_production').length;
+    return purchaseBatches.filter((b) => b.status === 'tersedia').length;
   }, [purchaseBatches]);
 
   // Total Finished Goods Stock (Gudang)
@@ -388,7 +392,8 @@ export default function DashboardModule({
           <div className="space-y-3">
             {activeBatches.map((b) => {
               const product = products.find((p) => p.id === b.productId);
-              const isTersedia = b.status === 'tersedia' || b.status === 'pending_production';
+              // D6 FIX: Cek status hanya 'tersedia' — tidak perlu fallback ke 'pending_production'
+              const isTersedia = b.status === 'tersedia';
 
               return (
                 <div key={b.id} className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
@@ -434,11 +439,19 @@ export default function DashboardModule({
                   {isTersedia && (
                     <div className="pt-1">
                       <button
-                        onClick={() => onOpenModal('pengolahan')}
+                        onClick={() => {
+                          // D2 FIX: Gunakan onOpenPengolahanForBatch jika tersedia
+                          // agar PengolahanModal langsung pre-select batch yang diklik
+                          if (onOpenPengolahanForBatch) {
+                            onOpenPengolahanForBatch(b.batchId);
+                          } else {
+                            onOpenModal('pengolahan');
+                          }
+                        }}
                         className="w-full bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1 shadow-xs"
                       >
                         <ChefHat className="w-3.5 h-3.5" />
-                        <span>Lakukan Pengolahan Batch Ini</span>
+                        <span>Olah Batch Ini Sekarang →</span>
                       </button>
                     </div>
                   )}

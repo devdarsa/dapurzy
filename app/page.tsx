@@ -16,7 +16,6 @@ import RevenueHistoryModule from '@/components/modules/RevenueHistoryModule';
 import BelanjaBatchModal from '@/components/modals/BelanjaBatchModal';
 import PengolahanModal from '@/components/modals/PengolahanModal';
 import AmbilMitraModal from '@/components/modals/AmbilMitraModal';
-import BatchProductionModal from '@/components/modals/BatchProductionModal';
 import MitraSettlementModal from '@/components/modals/MitraSettlementModal';
 import HomeSalesModal from '@/components/modals/HomeSalesModal';
 import CapitalModal from '@/components/modals/CapitalModal';
@@ -165,7 +164,6 @@ export default function DAPURZYApp() {
     | 'belanja_batch'
     | 'pengolahan'
     | 'ambil_mitra'
-    | 'batch_production'
     | 'settlement'
     | 'home_sales'
     | 'capital'
@@ -178,6 +176,8 @@ export default function DAPURZYApp() {
   const [editingMitra, setEditingMitra] = useState<Mitra | null>(null);
   const [mitraTabPeriod, setMitraTabPeriod] = useState<PeriodFilter>('all');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  // D2 FIX: State untuk pre-select batch saat membuka PengolahanModal dari kartu batch
+  const [pengolahanInitialBatchId, setPengolahanInitialBatchId] = useState<string>('');
 
   // --- FINANCIAL & CORE STATE ---
   const [operatingCapital, setOperatingCapital] = useState<number>(0);
@@ -391,49 +391,6 @@ export default function DAPURZYApp() {
     }
   };
 
-  // 2. Batch Belanja & Produksi
-  const handleBatchProduction = async (data: {
-    itemsDescription: string;
-    totalCost: number;
-    productId: string;
-    producedQty: number;
-    calculatedHpp: number;
-    allocations: Array<{
-      mitraId: string;
-      quantity: number;
-      pricePerUnit: number;
-    }>;
-  }) => {
-    const { itemsDescription, totalCost, productId, producedQty, calculatedHpp, allocations } = data;
-    const batchSeq = String(purchaseBatches.length + 1).padStart(3, '0');
-    const batchId = `BATCH-${new Date().getFullYear()}-${batchSeq}`;
-    const id = `PB-${Date.now()}`;
-
-    try {
-      const res = await fetch('/api/purchases', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id,
-          batchId,
-          itemsDescription,
-          totalCost,
-          productId,
-          producedQty,
-          calculatedHpp,
-          allocations: JSON.stringify(allocations),
-        }),
-      });
-      const json = await res.json();
-      if (!json.success) { showToast(json.error || 'Gagal menyimpan batch produksi!', 'error'); return; }
-
-      showToast(`Batch ${batchId} berhasil disimpan! (${producedQty} pcs, HPP: ${formatRupiah(calculatedHpp)})`);
-      setActiveModal(null);
-      await loadFromD1();
-    } catch (e) {
-      showToast('Koneksi database gagal saat menyimpan batch.', 'error');
-    }
-  };
 
   // 3. Rekap Setoran Mitra (Konsinyasi & Beli Putus)
   const handleMitraSettlement = async (data: {
@@ -501,10 +458,15 @@ export default function DAPURZYApp() {
 
     const defaultProd = products[0];
     const productId = defaultProd?.id || 'P-HOME';
-    const hpp = defaultProd?.avgHpp || 0;
-    
-    // Profit estimate (default 40% margin if pure cash deposit)
-    const profit = Math.round(amount * 0.4);
+
+    // BUG #11 FIX: Estimasi profit menggunakan rasio HPP aktual produk, bukan hardcoded 40%.
+    // hppRatio = avgHpp / price → proporsi biaya produksi terhadap harga jual.
+    // Jika produk belum ada / HPP belum di-set, fallback ke rasio 60% HPP (40% profit).
+    const hppRatio = (defaultProd && defaultProd.price > 0)
+      ? Math.min(defaultProd.avgHpp / defaultProd.price, 1)
+      : 0.6;
+    const hpp = Math.round(amount * hppRatio);
+    const profit = amount - hpp;
 
     try {
       const res = await fetch('/api/sales', {
@@ -666,7 +628,12 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
   // 9. Factory Reset
   const handleFactoryResetAllData = async () => {
     try {
-      const res = await fetch('/api/reset', { method: 'POST' });
+      // BUG #10 FIX: Sertakan secret key yang dibutuhkan backend untuk proteksi reset
+      const res = await fetch('/api/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: 'DAPURZY-RESET-2026' }),
+      });
       const json = await res.json();
       if (!json.success) { showToast(json.error || 'Gagal menghapus data!', 'error'); return; }
 
@@ -698,7 +665,7 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
       {/* HEADER UTAMA APP */}
       <Navbar
         onOpenDrawer={() => setIsDrawerOpen(true)}
-        onOpenPurchaseModal={() => setActiveModal('batch_production')}
+        onOpenPurchaseModal={() => setActiveModal('belanja_batch')}
       />
 
       {/* DRAWER MENU */}
@@ -727,6 +694,11 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
             sales={sales}
             stocks={stocks}
             onOpenModal={(modal) => setActiveModal(modal)}
+            onOpenPengolahanForBatch={(batchId) => {
+              // D2 FIX: Set batch pre-selected sebelum buka modal pengolahan
+              setPengolahanInitialBatchId(batchId);
+              setActiveModal('pengolahan');
+            }}
           />
         )}
 
@@ -815,6 +787,8 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
 
                   return (
                     <div key={m.id} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3 relative">
+                      {/* D3 FIX: Tab Mitra adalah analytics-only view. Edit/Hapus mitra
+                          di-centralize di MasterModule (Tab Master) agar tidak ada duplikasi CRUD. */}
                       <div className="flex justify-between items-start">
                         <div>
                           <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md">
@@ -824,20 +798,14 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
                           {m.address && <p className="text-xs text-slate-500">{m.address}</p>}
                           {m.whatsapp && <p className="text-[11px] text-emerald-700 font-medium">WA: {m.whatsapp}</p>}
                         </div>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => { setEditingMitra(m); setActiveModal('mitra'); }}
-                            className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg hover:bg-blue-100 cursor-pointer"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMitra(m.id)}
-                            className="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg hover:bg-rose-100 cursor-pointer"
-                          >
-                            Hapus
-                          </button>
-                        </div>
+                        {/* Shortcut ke Tab Master untuk mengedit mitra */}
+                        <button
+                          onClick={() => setActiveTab('master')}
+                          className="text-xs font-bold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg hover:bg-slate-100 cursor-pointer border border-slate-200"
+                          title="Edit mitra di Master Data"
+                        >
+                          ⚙️ Master
+                        </button>
                       </div>
 
                       {/* MITRA ANALYTICS DISPLAY BADGE */}
@@ -930,9 +898,10 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
 
       <PengolahanModal
         isOpen={activeModal === 'pengolahan'}
-        onClose={() => setActiveModal(null)}
-        availableBatches={purchaseBatches.filter((b) => b.status === 'tersedia' || b.status === 'pending_production')}
+        onClose={() => { setActiveModal(null); setPengolahanInitialBatchId(''); }}
+        availableBatches={purchaseBatches.filter((b) => b.status === 'tersedia')}
         products={products}
+        initialBatchId={pengolahanInitialBatchId}
         onSubmit={handlePengolahan}
       />
 
@@ -945,13 +914,6 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
         onSubmit={handleAmbilMitra}
       />
 
-      <BatchProductionModal
-        isOpen={activeModal === 'batch_production'}
-        onClose={() => setActiveModal(null)}
-        products={products}
-        mitras={mitras}
-        onSubmit={handleBatchProduction}
-      />
 
       <MitraSettlementModal
         isOpen={activeModal === 'settlement'}

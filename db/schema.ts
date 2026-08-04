@@ -40,7 +40,10 @@ export const purchaseBatches = sqliteTable('purchase_batches', {
   itemsDescription: text('items_description').notNull(),
   totalCost: real('total_cost').notNull(),
   supplier: text('supplier'),
-  status: text('status', { enum: ['pending_production', 'produced', 'completed', 'tersedia', 'habis'] }).default('tersedia').notNull(),
+  // BUG #2 FIX: Sederhanakan enum status ke hanya 2 nilai operasional.
+  // Status 'pending_production', 'produced', 'completed' adalah legacy dan tidak digunakan.
+  // Normalisasi ke 'tersedia'/'habis' dilakukan di sync route dan mapBatch().
+  status: text('status', { enum: ['tersedia', 'habis'] }).default('tersedia').notNull(),
   productId: text('product_id').references(() => products.id),
   producedQty: integer('produced_qty').default(0).notNull(),
   calculatedHpp: real('calculated_hpp').default(0).notNull(),
@@ -96,6 +99,8 @@ export const sales = sqliteTable('sales', {
 export const capitalLogs = sqliteTable('capital_logs', {
   id: text('id').primaryKey(),
   trxNumber: text('trx_number').notNull().unique(),
+  // BUG #7 FIX: 'PROFIT_WITHDRAWAL' adalah nama kanonik (bukan 'WITHDRAWAL').
+  // Backend capital/route.ts menormalisasi alias 'WITHDRAWAL' → 'PROFIT_WITHDRAWAL'.
   type: text('type', { enum: ['INJECTION', 'HPP_RECOVERY', 'BELANJA_EXPENSE', 'PROFIT_WITHDRAWAL', 'ADJUSTMENT'] }).default('INJECTION').notNull(),
   amount: real('amount').notNull(),
   note: text('note'),

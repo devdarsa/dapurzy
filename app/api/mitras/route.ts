@@ -1,20 +1,7 @@
 import { NextResponse } from 'next/server';
+import { getDB } from '@/lib/db';
 
 export const runtime = 'edge';
-
-function getDB(request: Request): any {
-  const env = (process as any).env || {};
-  const reqEnv = (request as any).env || (request as any).cf?.env || {};
-  const globEnv = (globalThis as any).env || (globalThis as any) || {};
-
-  return (
-    env.DB ||
-    reqEnv.DB ||
-    globEnv.DB ||
-    (globalThis as any).__D1_DB ||
-    null
-  );
-}
 
 // GET: List all mitras
 export async function GET(request: Request) {
@@ -97,4 +84,3 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
-

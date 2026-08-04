@@ -3,13 +3,10 @@
 import React from 'react';
 import {
   X,
-  Home,
-  Users,
-  TrendingUp,
-  Layers,
   PlusCircle,
   Trash2,
   Lock,
+  Wallet,
 } from 'lucide-react';
 
 interface DrawerMenuProps {
@@ -26,8 +23,6 @@ interface DrawerMenuProps {
 export default function DrawerMenu({
   isOpen,
   onClose,
-  activeTab,
-  setActiveTab,
   onOpenCapitalModal,
   onOpenResetModal,
   showToast,
@@ -46,6 +41,7 @@ export default function DrawerMenu({
       {/* DRAWER CONTENT */}
       <div className="relative bg-white w-72 sm:w-80 h-full shadow-2xl p-4 sm:p-5 flex flex-col justify-between z-10 animate-in slide-in-from-left duration-200">
         <div className="space-y-4">
+          {/* HEADER */}
           <div className="flex justify-between items-center border-b border-slate-100 pb-3">
             <div className="flex items-center space-x-2">
               <img
@@ -66,73 +62,31 @@ export default function DrawerMenu({
             </button>
           </div>
 
-          <nav className="space-y-1.5 text-xs font-bold text-slate-700">
-            <button
-              onClick={() => {
-                setActiveTab('dashboard');
-                onClose();
-              }}
-              className={`w-full flex items-center space-x-2.5 p-3 rounded-xl transition cursor-pointer ${
-                activeTab === 'dashboard' ? 'bg-emerald-50 text-emerald-800 font-extrabold border border-emerald-200' : 'hover:bg-slate-50'
-              }`}
-            >
-              <Home className="w-4.5 h-4.5 text-emerald-600" />
-              <span>Beranda & Dompet Kas</span>
-            </button>
+          {/* UTILITAS CEPAT */}
+          <div className="space-y-2 text-xs font-bold">
+            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black pl-1">⚡ Aksi Cepat</p>
 
+            {/* Injeksi / Tarik Modal */}
             <button
               onClick={() => {
-                setActiveTab('mitra');
+                onOpenCapitalModal();
                 onClose();
               }}
-              className={`w-full flex items-center space-x-2.5 p-3 rounded-xl transition cursor-pointer ${
-                activeTab === 'mitra' ? 'bg-amber-50 text-amber-900 font-extrabold border border-amber-200' : 'hover:bg-slate-50'
-              }`}
+              className="w-full flex items-center space-x-2.5 bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-xl shadow-xs active:scale-95 transition cursor-pointer"
             >
-              <Users className="w-4.5 h-4.5 text-amber-600" />
-              <span>Mitra & Rekap Setoran</span>
+              <Wallet className="w-4 h-4" />
+              <div className="text-left">
+                <span className="block font-black text-xs">Kelola Modal Usaha</span>
+                <span className="block text-[10px] font-normal text-emerald-100">Injeksi / Tarik / Koreksi Kas</span>
+              </div>
             </button>
-
-            <button
-              onClick={() => {
-                setActiveTab('revenue');
-                onClose();
-              }}
-              className={`w-full flex items-center space-x-2.5 p-3 rounded-xl transition cursor-pointer ${
-                activeTab === 'revenue' ? 'bg-emerald-50 text-emerald-900 font-extrabold border border-emerald-200' : 'hover:bg-slate-50'
-              }`}
-            >
-              <TrendingUp className="w-4.5 h-4.5 text-emerald-600" />
-              <span>Riwayat Pendapatan & Profit</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setActiveTab('master');
-                onClose();
-              }}
-              className={`w-full flex items-center space-x-2.5 p-3 rounded-xl transition cursor-pointer ${
-                activeTab === 'master' ? 'bg-purple-50 text-purple-900 font-extrabold border border-purple-200' : 'hover:bg-slate-50'
-              }`}
-            >
-              <Layers className="w-4.5 h-4.5 text-purple-600" />
-              <span>Batch Produksi & Master Produk</span>
-            </button>
-          </nav>
+          </div>
         </div>
 
-        {/* BOTTOM UTILITY ACTIONS & FACTORY RESET DANGER ZONE */}
+        {/* BOTTOM UTILITY ACTIONS & DANGER ZONE */}
         <div className="space-y-2 border-t border-slate-100 pt-3 text-xs font-bold">
-          <button
-            onClick={() => {
-              onOpenCapitalModal();
-              onClose();
-            }}
-            className="w-full flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white p-2.5 rounded-xl shadow-xs active:scale-95 transition cursor-pointer"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Injeksi Modal Usaha</span>
-          </button>
+          {/* D4 FIX: Navigasi tab dihapus dari sini — sudah tersedia di BottomNav yang selalu terlihat.
+              DrawerMenu sekarang hanya berisi fungsi utilitas: Modal, Lock, Reset. */}
 
           {onLockApp && (
             <button
@@ -166,4 +120,3 @@ export default function DrawerMenu({
     </div>
   );
 }
-

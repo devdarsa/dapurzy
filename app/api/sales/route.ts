@@ -1,20 +1,7 @@
 import { NextResponse } from 'next/server';
+import { getDB } from '@/lib/db';
 
 export const runtime = 'edge';
-
-function getDB(request: Request): any {
-  const env = (process as any).env || {};
-  const reqEnv = (request as any).env || (request as any).cf?.env || {};
-  const globEnv = (globalThis as any).env || (globalThis as any) || {};
-
-  return (
-    env.DB ||
-    reqEnv.DB ||
-    globEnv.DB ||
-    (globalThis as any).__D1_DB ||
-    null
-  );
-}
 
 // GET: Fetch all sales records
 export async function GET(request: Request) {
@@ -54,8 +41,10 @@ export async function POST(request: Request) {
     } = body;
 
     const soldQty = Number(quantity) || (titipQty - returnedQty);
-    if (!productId || soldQty < 0 || !pricePerUnit) {
-      return NextResponse.json({ success: false, error: 'Data penjualan / setoran tidak valid' }, { status: 400 });
+
+    // BUG #9 FIX: Validasi soldQty <= 0 (bukan hanya < 0) agar record 0 pcs tidak tersimpan
+    if (!productId || soldQty <= 0 || !pricePerUnit) {
+      return NextResponse.json({ success: false, error: 'Data penjualan / setoran tidak valid (soldQty harus > 0)' }, { status: 400 });
     }
 
     const calculatedTotal = totalAmount || (soldQty * pricePerUnit);
@@ -157,4 +146,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
-

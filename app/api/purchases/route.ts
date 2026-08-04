@@ -1,20 +1,7 @@
 import { NextResponse } from 'next/server';
+import { getDB } from '@/lib/db';
 
 export const runtime = 'edge';
-
-function getDB(request: Request): any {
-  const env = (process as any).env || {};
-  const reqEnv = (request as any).env || (request as any).cf?.env || {};
-  const globEnv = (globalThis as any).env || (globalThis as any) || {};
-
-  return (
-    env.DB ||
-    reqEnv.DB ||
-    globEnv.DB ||
-    (globalThis as any).__D1_DB ||
-    null
-  );
-}
 
 // GET all purchase batches from D1
 export async function GET(request: Request) {
@@ -36,7 +23,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, batchId, itemsDescription, totalCost, supplier, items, date } = body;
+    const { id, batchId, itemsDescription, totalCost, supplier, items, date, allocations } = body;
 
     if (!itemsDescription || !totalCost || totalCost <= 0) {
       return NextResponse.json({ success: false, error: 'Deskripsi dan total biaya belanja harus valid' }, { status: 400 });
@@ -44,11 +31,16 @@ export async function POST(request: Request) {
 
     const createdAtVal = date ? `${date} 12:00:00` : new Date().toISOString().replace('T', ' ').substring(0, 19);
 
+    // Simpan allocations jika ada
+    const allocationsJson = allocations
+      ? (typeof allocations === 'string' ? allocations : JSON.stringify(allocations))
+      : null;
+
     await db
       .prepare(
-        'INSERT INTO purchase_batches (id, batch_id, items_description, total_cost, supplier, status, product_id, produced_qty, calculated_hpp, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO purchase_batches (id, batch_id, items_description, total_cost, supplier, status, product_id, produced_qty, calculated_hpp, allocations, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
       )
-      .bind(id, batchId, itemsDescription, totalCost, supplier || 'Supplier Umum', 'tersedia', null, 0, 0, createdAtVal)
+      .bind(id, batchId, itemsDescription, totalCost, supplier || 'Supplier Umum', 'tersedia', null, 0, 0, allocationsJson, createdAtVal)
       .run();
 
     // Insert individual purchase_items if provided
@@ -71,12 +63,12 @@ export async function POST(request: Request) {
       }
     }
 
-    // Record in capital_logs as expense
+    // BUG #3 FIX: Record dalam capital_logs dengan type='BELANJA_EXPENSE' bukan default 'INJECTION'
     const capitalId = `CAP-OUT-${Date.now()}`;
     const trxNum = `TRX-BELANJA-${Date.now().toString().slice(-6)}`;
     await db
-      .prepare('INSERT INTO capital_logs (id, trx_number, amount, note) VALUES (?, ?, ?, ?)')
-      .bind(capitalId, trxNum, -totalCost, `Belanja Batch ${batchId}: ${itemsDescription}`)
+      .prepare('INSERT INTO capital_logs (id, trx_number, type, amount, note) VALUES (?, ?, ?, ?, ?)')
+      .bind(capitalId, trxNum, 'BELANJA_EXPENSE', -totalCost, `Belanja Batch ${batchId}: ${itemsDescription}`)
       .run();
 
     // Audit log
@@ -140,7 +132,7 @@ export async function PUT(request: Request) {
 
     const totalQty = itemsToProcess.reduce((sum, item) => sum + item.producedQty, 0);
 
-    // HPP = Total Nilai Batch / Total Jumlah Produk Hasil Olahan (Sama untuk semua unit produk dari batch ini)
+    // HPP = Total Nilai Batch / Total Jumlah Produk Hasil Olahan
     const finalHpp = explicitHpp && explicitHpp > 0
       ? explicitHpp
       : (totalQty > 0 ? Math.ceil((batchCost / totalQty) / 100) * 100 : 0);
@@ -153,7 +145,7 @@ export async function PUT(request: Request) {
 
     // 2. Process each produced product output
     for (const item of itemsToProcess) {
-      // Update product avg_hpp (applies equal HPP per unit for products from this batch)
+      // Update product avg_hpp
       await db
         .prepare('UPDATE products SET avg_hpp = ? WHERE id = ?')
         .bind(finalHpp, item.productId)

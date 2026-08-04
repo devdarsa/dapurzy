@@ -43,7 +43,7 @@ export default function Navbar({ onOpenDrawer, onOpenPurchaseModal }: NavbarProp
           className="bg-amber-400 hover:bg-amber-300 text-amber-950 font-black text-xs sm:text-sm px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl shadow-xs flex items-center space-x-1 active:scale-95 transition cursor-pointer whitespace-nowrap shrink-0"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
-          <span>+ Belanja</span>
+          <span>+ Belanja Bahan</span>
         </button>
       </div>
     </header>

@@ -1,21 +1,7 @@
 import { NextResponse } from 'next/server';
-import { calculatePrecisionHpp } from '@/lib/utils';
+import { getDB } from '@/lib/db';
 
 export const runtime = 'edge';
-
-function getDB(request: Request): any {
-  const env = (process as any).env || {};
-  const reqEnv = (request as any).env || (request as any).cf?.env || {};
-  const globEnv = (globalThis as any).env || (globalThis as any) || {};
-
-  return (
-    env.DB ||
-    reqEnv.DB ||
-    globEnv.DB ||
-    (globalThis as any).__D1_DB ||
-    null
-  );
-}
 
 export async function POST(request: Request) {
   const db = getDB(request);
@@ -42,7 +28,9 @@ export async function POST(request: Request) {
       }
     }
 
-    const calculatedHpp = calculatePrecisionHpp(batchCost, producedQty);
+    const calculatedHpp = batchCost > 0 && producedQty > 0
+      ? Math.ceil((batchCost / producedQty) / 100) * 100
+      : 0;
 
     if (db) {
       // 1. Update purchase_batches status to habis

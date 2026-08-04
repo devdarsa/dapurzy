@@ -58,12 +58,14 @@ export default function MitraSettlementModal({
   const selectedMitra = useMemo(() => mitras.find((m) => m.id === selectedMitraId) || mitras[0], [mitras, selectedMitraId]);
   const selectedProduct = useMemo(() => products.find((p) => p.id === selectedProductId) || products[0], [products, selectedProductId]);
 
-  // Resolve standard custom price for this mitra if exists, otherwise product price
+  // Resolve standard custom price for this mitra if exists, otherwise product price.
+  // BUG #14 FIX: customPrices sudah di-parse sebagai object oleh mapMitra() di page.tsx.
+  // Tidak perlu JSON.parse ulang di sini karena menyebabkan double-parse yang bisa throw error.
   const { baseMitraPrice, isCustomPrice } = useMemo(() => {
     if (!selectedMitra || !selectedProduct) return { baseMitraPrice: 0, isCustomPrice: false };
-    if (selectedMitra.customPrices) {
-      const pricesMap = typeof selectedMitra.customPrices === 'string' ? JSON.parse(selectedMitra.customPrices) : selectedMitra.customPrices;
-      if (pricesMap && pricesMap[selectedProduct.id] && Number(pricesMap[selectedProduct.id]) > 0) {
+    if (selectedMitra.customPrices && typeof selectedMitra.customPrices === 'object') {
+      const pricesMap = selectedMitra.customPrices as Record<string, number>;
+      if (pricesMap[selectedProduct.id] && Number(pricesMap[selectedProduct.id]) > 0) {
         return { baseMitraPrice: Number(pricesMap[selectedProduct.id]), isCustomPrice: true };
       }
     }

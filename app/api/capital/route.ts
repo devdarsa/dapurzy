@@ -1,20 +1,7 @@
 import { NextResponse } from 'next/server';
+import { getDB } from '@/lib/db';
 
 export const runtime = 'edge';
-
-function getDB(request: Request): any {
-  const env = (process as any).env || {};
-  const reqEnv = (request as any).env || (request as any).cf?.env || {};
-  const globEnv = (globalThis as any).env || (globalThis as any) || {};
-
-  return (
-    env.DB ||
-    reqEnv.DB ||
-    globEnv.DB ||
-    (globalThis as any).__D1_DB ||
-    null
-  );
-}
 
 // GET: Fetch all capital logs from D1
 export async function GET(request: Request) {
@@ -42,17 +29,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Nominal modal tidak boleh 0' }, { status: 400 });
     }
 
-    const finalAmount = type === 'WITHDRAWAL' ? -Math.abs(amount) : amount;
-    const defaultNote = type === 'WITHDRAWAL' ? 'Penarikan / Koreksi Modal' : 'Injeksi Modal Usaha';
+    // BUG #7 FIX: Normalisasi 'WITHDRAWAL' (legacy/frontend alias) → 'PROFIT_WITHDRAWAL' (enum resmi)
+    const normalizedType = type === 'WITHDRAWAL' ? 'PROFIT_WITHDRAWAL' : type;
+    const isWithdrawal = normalizedType === 'PROFIT_WITHDRAWAL';
+
+    const finalAmount = isWithdrawal ? -Math.abs(amount) : Math.abs(amount);
+    const defaultNote = isWithdrawal ? 'Penarikan / Koreksi Modal' : 'Injeksi Modal Usaha';
 
     await db
       .prepare('INSERT INTO capital_logs (id, trx_number, type, amount, note) VALUES (?, ?, ?, ?, ?)')
-      .bind(id, trxNumber, type, finalAmount, note || defaultNote)
+      .bind(id, trxNumber, normalizedType, finalAmount, note || defaultNote)
       .run();
 
     await db
       .prepare('INSERT INTO audit_logs (id, action, trx_number, details) VALUES (?, ?, ?, ?)')
-      .bind(`AUD-${Date.now()}`, type === 'WITHDRAWAL' ? 'CAPITAL_WITHDRAWN' : 'CAPITAL_INJECTED', trxNumber, `${defaultNote}: ${finalAmount}`)
+      .bind(
+        `AUD-${Date.now()}`,
+        isWithdrawal ? 'CAPITAL_WITHDRAWN' : 'CAPITAL_INJECTED',
+        trxNumber,
+        `${note || defaultNote}: ${finalAmount}`
+      )
       .run();
 
     return NextResponse.json({ success: true, trxNumber, finalAmount });

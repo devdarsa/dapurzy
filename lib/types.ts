@@ -35,7 +35,9 @@ export interface PurchaseBatch {
   itemsDescription: string;
   totalCost: number;
   supplier?: string | null;
-  status: 'tersedia' | 'habis' | 'pending_production' | 'produced' | 'completed';
+  // D6 FIX: Status hanya 'tersedia' | 'habis'. Legacy values ('pending_production', 'produced', 'completed')
+  // dinormalisasi oleh mapBatch() di page.tsx dan sync/route.ts sebelum mencapai komponen.
+  status: 'tersedia' | 'habis';
   productId?: string | null;
   producedQty: number;
   calculatedHpp: number;
