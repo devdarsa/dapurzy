@@ -14,6 +14,7 @@ interface MasterModuleProps {
   onOpenCreateMitraModal: () => void;
   onOpenEditMitraModal: (mitra: Mitra) => void;
   onDeleteMitra: (mitraId: string) => void;
+  onOpenResetModal?: () => void;
 }
 
 export default function MasterModule({
@@ -25,6 +26,7 @@ export default function MasterModule({
   onOpenCreateMitraModal,
   onOpenEditMitraModal,
   onDeleteMitra,
+  onOpenResetModal,
 }: MasterModuleProps) {
   const [viewMode, setViewMode] = useState<'all' | 'products' | 'mitras'>('all');
 
@@ -254,6 +256,26 @@ export default function MasterModule({
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* 3. SYSTEM MAINTENANCE & FACTORY RESET CARD */}
+      {onOpenResetModal && (
+        <div className="bg-rose-50/70 p-4 rounded-2xl border border-rose-200 shadow-xs flex items-center justify-between gap-3">
+          <div>
+            <h4 className="font-extrabold text-rose-900 text-xs sm:text-sm flex items-center gap-1.5">
+              <Trash2 className="w-4 h-4 text-rose-600" /> System Maintenance &amp; Factory Reset
+            </h4>
+            <p className="text-[11px] text-rose-700 mt-0.5">
+              Hapus semua data 100% untuk memulai ulang sistem dari awal.
+            </p>
+          </div>
+          <button
+            onClick={onOpenResetModal}
+            className="bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-xs active:scale-95 transition cursor-pointer whitespace-nowrap shrink-0"
+          >
+            🗑️ Factory Reset
+          </button>
         </div>
       )}
     </div>

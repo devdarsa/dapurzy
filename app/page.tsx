@@ -5,7 +5,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 // Core UI Components & Modals Container
 import Navbar from '@/components/Navbar';
 import BottomNav from '@/components/BottomNav';
-import DrawerMenu from '@/components/DrawerMenu';
 import Toast from '@/components/Toast';
 import PinLockScreen from '@/components/PinLockScreen';
 import ModalsContainer from '@/components/modals/ModalsContainer';
@@ -68,7 +67,6 @@ export default function DAPURZYApp() {
 
   // --- STATE NAVIGATION & UI ---
   const [activeTab, setActiveTab] = useState<string>('dashboard');
-  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -464,22 +462,10 @@ Terima kasih atas kerjasamanya! 🙏`;
         </div>
       )}
 
-      {/* HEADER UTAMA APP */}
+      {/* HEADER UTAMA APP (DENGAN LOCK BUTTON DIRECT DI HEADER, TANPA SIDEBAR) */}
       <Navbar
-        onOpenDrawer={() => setIsDrawerOpen(true)}
-        onOpenPurchaseModal={() => setActiveModal('belanja_batch')}
-      />
-
-      {/* DRAWER MENU */}
-      <DrawerMenu
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onOpenCapitalModal={() => setActiveModal('capital')}
-        onOpenResetModal={() => setActiveModal('reset')}
-        showToast={showToast}
         onLockApp={handleLockApp}
+        onOpenPurchaseModal={() => setActiveModal('belanja_batch')}
       />
 
       {/* MAIN CONTENT AREA */}
@@ -537,6 +523,7 @@ Terima kasih atas kerjasamanya! 🙏`;
             onOpenCreateMitraModal={() => { setEditingMitra(null); setActiveModal('mitra'); }}
             onOpenEditMitraModal={(mitra) => { setEditingMitra(mitra); setActiveModal('mitra'); }}
             onDeleteMitra={handleDeleteMitra}
+            onOpenResetModal={() => setActiveModal('reset')}
           />
         )}
       </main>
