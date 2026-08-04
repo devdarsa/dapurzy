@@ -8,7 +8,6 @@ interface PinLockScreenProps {
 }
 
 export default function PinLockScreen({ onUnlockSuccess }: PinLockScreenProps) {
-  // Official Account PIN: '250420' (Username: develzy / dapurelzy)
   const savedPin = typeof window !== 'undefined' ? localStorage.getItem('dapurzy_user_pin') : null;
   const targetPin = savedPin || '250420';
 
@@ -66,7 +65,7 @@ export default function PinLockScreen({ onUnlockSuccess }: PinLockScreenProps) {
                 LIVE PRODUCTION
               </span>
             </h1>
-            <p className="text-xs text-emerald-200 font-medium">Akun Resmi: develzy (PIN: 250420)</p>
+            <p className="text-xs text-emerald-200 font-medium">Sistem Keamanan Akun Dapurzy</p>
           </div>
         </div>
 
@@ -93,7 +92,7 @@ export default function PinLockScreen({ onUnlockSuccess }: PinLockScreenProps) {
           ) : (
             <p className="text-[11px] font-bold text-amber-300 flex items-center justify-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-              <span>Masukkan 6-Digit PIN Resmi (250420)</span>
+              <span>Masukkan 6-Digit PIN Keamanan Akun Anda</span>
             </p>
           )}
         </div>
