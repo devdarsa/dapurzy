@@ -28,9 +28,10 @@ import MitraModal from '@/components/modals/MitraModal';
 import MitraSettlementModal from '@/components/modals/MitraSettlementModal';
 import ResetDataModal from '@/components/modals/ResetDataModal';
 
-// Import Types & Helpers
+// Import Types, Helpers & Notification Engine
 import { Product, Mitra, PurchaseBatch, ProductStock, AuditLog } from '@/lib/types';
 import { formatRupiah, calculatePrecisionHpp, calculateTransactionProfit } from '@/lib/utils';
+import { requestNotificationPermission, sendLowStockNotification, getRecommendedIngredients } from '@/lib/notification';
 
 export default function DAPURZYApp() {
   // --- STATE KEAMANAN PIN LIVE PRODUCTION (MASA AKTIF 3 HARI) ---
@@ -57,6 +58,7 @@ export default function DAPURZYApp() {
     setIsUnlocked(true);
     sessionStorage.setItem('dapurzy_unlocked', 'true');
     localStorage.setItem('dapurzy_unlock_timestamp', Date.now().toString());
+    requestNotificationPermission();
     showToast('Sistem DAPURZY Live Berhasil Dibuka! (Sesi Masa Aktif 3 Hari)', 'success');
   };
 
@@ -107,7 +109,7 @@ export default function DAPURZYApp() {
       id: 'AUD-LIVE-01',
       action: 'LIVE_PRODUCTION_INITIALIZED',
       trxNumber: 'SYS-LIVE-INIT',
-      details: 'DAPURZY Live System Engine Active with LocalStorage Persistence.',
+      details: 'DAPURZY Live System Engine Active with Hourly Low-Stock Push Alerts.',
       createdAt: new Date().toISOString(),
     },
   ]);
@@ -152,6 +154,26 @@ export default function DAPURZYApp() {
       console.error('Failed to save state to localStorage', e);
     }
   }, [cashBalance, activeCapital, products, mitras, purchaseBatches, stocks, transactions, auditLogs]);
+
+  // --- HOURLY REAL-TIME LOW-STOCK CHECKER & SMARTPHONE PUSH NOTIFICATIONS ---
+  useEffect(() => {
+    const checkLowStockAlerts = () => {
+      products.forEach((p) => {
+        const summary = getProductStockSummary(p.id);
+        if (summary.total <= 10) {
+          const recipe = getRecommendedIngredients(p.category, p.name);
+          sendLowStockNotification(p.name, summary.total, recipe);
+        }
+      });
+    };
+
+    // Run check once on mount / state load
+    checkLowStockAlerts();
+
+    // Set hourly interval (1 Hour = 3,600,000 ms)
+    const intervalId = setInterval(checkLowStockAlerts, 60 * 60 * 1000);
+    return () => clearInterval(intervalId);
+  }, [products, stocks]);
 
   // SHOW TOAST MESSAGE
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -219,12 +241,17 @@ export default function DAPURZYApp() {
 
   // --- HANDLER BUSINESS LOGIC ---
 
-  // 1. Tambah Belanja Bahan Baku (Mengurangi Kas Operasional Modal)
+  // 1. Tambah Belanja Bahan Baku (STRICT: Mengurangi Kas, Tolak Jika Kas Habis / Kurang)
   const handleCreatePurchaseBatch = (data: { itemsDescription: string; totalCost: number; supplier: string }) => {
     const { itemsDescription, totalCost, supplier } = data;
 
     if (!itemsDescription || totalCost <= 0) {
       showToast('Deskripsi dan total biaya belanja harus diisi dengan benar!', 'error');
+      return;
+    }
+
+    if (cashBalance <= 0) {
+      showToast('Saldo Kas Operasional Habis (Rp 0)! Harap lakukan Injeksi Modal terlebih dahulu.', 'error');
       return;
     }
 
@@ -933,6 +960,7 @@ export default function DAPURZYApp() {
       <PurchaseModal
         isOpen={activeModal === 'purchase'}
         onClose={() => setActiveModal(null)}
+        cashBalance={cashBalance}
         onSubmit={handleCreatePurchaseBatch}
       />
 
