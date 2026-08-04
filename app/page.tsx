@@ -50,6 +50,7 @@ export default function DAPURZYApp() {
         handleLockApp();
       } else {
         setIsUnlocked(true);
+        fetchCloudflareD1Data();
       }
     } else {
       setIsUnlocked(false);
@@ -61,6 +62,7 @@ export default function DAPURZYApp() {
     sessionStorage.setItem('dapurzy_unlocked', 'true');
     localStorage.setItem('dapurzy_unlock_timestamp', Date.now().toString());
     registerServiceWorkerAndRequestPermission();
+    fetchCloudflareD1Data();
     showToast('Sistem DAPURZY Live Berhasil Dibuka! (Sesi Masa Aktif 3 Hari)', 'success');
   };
 
@@ -98,7 +100,7 @@ export default function DAPURZYApp() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingMitra, setEditingMitra] = useState<Mitra | null>(null);
 
-  // --- STATE LIVE PRODUCTION WITH FULL LOCALSTORAGE PERSISTENCE ---
+  // --- STATE LIVE PRODUCTION WITH MULTI-DEVICE CLOUDFLARE D1 SYNC & LOCALSTORAGE PERSISTENCE ---
   const [cashBalance, setCashBalance] = useState<number>(0);
   const [activeCapital, setActiveCapital] = useState<number>(0);
   const [products, setProducts] = useState<Product[]>([]);
@@ -111,12 +113,30 @@ export default function DAPURZYApp() {
       id: 'AUD-LIVE-01',
       action: 'LIVE_PRODUCTION_INITIALIZED',
       trxNumber: 'SYS-LIVE-INIT',
-      details: 'DAPURZY Live System Engine Active with Smartphone System Push Alerts.',
+      details: 'DAPURZY Multi-Device Cloudflare D1 Remote Synchronization Engine Active.',
       createdAt: new Date().toISOString(),
     },
   ]);
 
-  // Load state from localStorage on mount
+  // Fetch account data from Cloudflare D1 Remote Database for Multi-Device Sync
+  const fetchCloudflareD1Data = async () => {
+    try {
+      const res = await fetch('/api/sync');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          if (json.data.products && json.data.products.length > 0) setProducts(json.data.products);
+          if (json.data.mitras && json.data.mitras.length > 0) setMitras(json.data.mitras);
+          if (json.data.purchaseBatches && json.data.purchaseBatches.length > 0) setPurchaseBatches(json.data.purchaseBatches);
+          if (json.data.stocks && json.data.stocks.length > 0) setStocks(json.data.stocks);
+        }
+      }
+    } catch (e) {
+      console.log('Multi-device D1 sync error:', e);
+    }
+  };
+
+  // Load state from localStorage on mount (Device Fallback)
   useEffect(() => {
     try {
       const savedCash = localStorage.getItem('dapurzy_cash_balance');
@@ -141,7 +161,7 @@ export default function DAPURZYApp() {
     }
   }, []);
 
-  // Save state to localStorage on state changes
+  // Save state to localStorage & push sync to Cloudflare D1 Remote
   useEffect(() => {
     try {
       localStorage.setItem('dapurzy_cash_balance', cashBalance.toString());
@@ -152,8 +172,23 @@ export default function DAPURZYApp() {
       localStorage.setItem('dapurzy_stocks', JSON.stringify(stocks));
       localStorage.setItem('dapurzy_transactions', JSON.stringify(transactions));
       localStorage.setItem('dapurzy_audit_logs', JSON.stringify(auditLogs));
+
+      // Push sync to Cloudflare D1 Remote asynchronously
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cashBalance,
+          activeCapital,
+          products,
+          mitras,
+          purchaseBatches,
+          stocks,
+          transactions,
+        }),
+      }).catch((e) => console.log('Background D1 Sync post error:', e));
     } catch (e) {
-      console.error('Failed to save state to localStorage', e);
+      console.error('Failed to save state', e);
     }
   }, [cashBalance, activeCapital, products, mitras, purchaseBatches, stocks, transactions, auditLogs]);
 
@@ -169,10 +204,7 @@ export default function DAPURZYApp() {
       });
     };
 
-    // Run check once on mount / state load
     checkLowStockAlerts();
-
-    // Set hourly interval (1 Hour = 3,600,000 ms)
     const intervalId = setInterval(checkLowStockAlerts, 60 * 60 * 1000);
     return () => clearInterval(intervalId);
   }, [products, stocks]);
