@@ -6,6 +6,7 @@ import EmptyPrerequisiteState from './EmptyPrerequisiteState';
 import { formatNumberWithDots, parseFormattedNumber, formatRupiah } from '@/lib/utils';
 import { Home, AlertCircle, PlusCircle } from 'lucide-react';
 import { Product } from '@/lib/types';
+import { toast } from '@/lib/toast';
 
 interface HomeSalesModalProps {
   isOpen: boolean;
@@ -32,7 +33,7 @@ export default function HomeSalesModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (rawAmount <= 0) {
-      alert('Mohon masukkan nominal uang tunai yang valid!');
+      toast.warning('Mohon masukkan nominal uang tunai yang valid!');
       return;
     }
     onSubmit({

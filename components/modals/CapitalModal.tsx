@@ -5,6 +5,7 @@ import ModalWrapper from '../ModalWrapper';
 import NumericCalculatorKeypad from '../NumericCalculatorKeypad';
 import { formatNumberWithDots, parseFormattedNumber, formatRupiah, formatDate } from '@/lib/utils';
 import { Calculator, PlusCircle, MinusCircle, Trash2, History, AlertCircle } from 'lucide-react';
+import { toast } from '@/lib/toast';
 import { CapitalLog } from '@/lib/types';
 
 interface CapitalModalProps {
@@ -36,7 +37,7 @@ export default function CapitalModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (rawAmount <= 0) {
-      alert('Nominal harus lebih besar dari Rp 0!');
+      toast.warning('Nominal harus lebih besar dari Rp 0!');
       return;
     }
 
@@ -175,8 +176,15 @@ export default function CapitalModal({
                         {onDeleteLog && (
                           <button
                             type="button"
-                            onClick={() => {
-                              if (confirm(`Hapus log modal "${log.note}" sebesar ${formatRupiah(log.amount)}?`)) {
+                            onClick={async () => {
+                              const confirmed = await toast.confirm({
+                                title: 'Hapus Log Modal',
+                                message: `Hapus log modal "${log.note}" sebesar ${formatRupiah(log.amount)}?`,
+                                variant: 'danger',
+                                confirmText: 'Ya, Hapus',
+                                cancelText: 'Batal',
+                              });
+                              if (confirmed) {
                                 onDeleteLog(log.id);
                               }
                             }}

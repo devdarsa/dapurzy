@@ -6,6 +6,7 @@ import EmptyPrerequisiteState from './EmptyPrerequisiteState';
 import NumericCalculatorKeypad from '../NumericCalculatorKeypad';
 import { formatNumberWithDots, parseFormattedNumber, formatRupiah } from '@/lib/utils';
 import { Calculator, Calendar, ShoppingBag, AlertCircle, PlusCircle } from 'lucide-react';
+import { toast } from '@/lib/toast';
 
 interface BelanjaBatchModalProps {
   isOpen: boolean;
@@ -45,11 +46,11 @@ export default function BelanjaBatchModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!itemsDescription.trim()) {
-      alert('Mohon isi Keterangan Belanja!');
+      toast.warning('Mohon isi Keterangan Belanja!');
       return;
     }
     if (totalCost <= 0) {
-      alert('Nominal Pengeluaran Belanja harus lebih dari Rp 0!');
+      toast.warning('Nominal Pengeluaran Belanja harus lebih dari Rp 0!');
       return;
     }
     onSubmit({

@@ -6,6 +6,7 @@ import EmptyPrerequisiteState from './EmptyPrerequisiteState';
 import { PurchaseBatch, Product } from '@/lib/types';
 import { formatRupiah, formatNumberWithDots, parseFormattedNumber, calculatePrecisionHpp } from '@/lib/utils';
 import { ChefHat, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { toast } from '@/lib/toast';
 
 interface PengolahanModalProps {
   isOpen: boolean;
@@ -75,15 +76,15 @@ export default function PengolahanModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedBatchId) {
-      alert('Pilih Batch Belanja yang masih Tersedia!');
+      toast.warning('Pilih Batch Belanja yang masih Tersedia!');
       return;
     }
     if (!selectedProductId) {
-      alert('Pilih Produk Olahan!');
+      toast.warning('Pilih Produk Olahan!');
       return;
     }
     if (producedQty <= 0) {
-      alert('Jumlah Hasil Produksi (PCS) harus lebih dari 0!');
+      toast.warning('Jumlah Hasil Produksi (PCS) harus lebih dari 0!');
       return;
     }
 

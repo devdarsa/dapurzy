@@ -6,6 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Navbar from '@/components/Navbar';
 import BottomNav from '@/components/BottomNav';
 import Toast from '@/components/Toast';
+import { toast } from '@/lib/toast';
 import PinLockScreen from '@/components/PinLockScreen';
 import ModalsContainer from '@/components/modals/ModalsContainer';
 
@@ -85,9 +86,11 @@ export default function DAPURZYApp() {
   const [stocks, setStocks] = useState<ProductStock[]>([]);
   const [capitalLogs, setCapitalLogs] = useState<CapitalLog[]>([]);
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3500);
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
+    if (type === 'error') toast.error(message);
+    else if (type === 'warning') toast.warning(message);
+    else if (type === 'info') toast.info(message);
+    else toast.success(message);
   };
 
   // ── LOAD DATA ──────────────────────────────────────────────────────────────
@@ -352,7 +355,14 @@ export default function DAPURZYApp() {
 
   // 6. Hapus Master Produk
   const handleDeleteProduct = async (productId: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus produk ini dari Master?')) return;
+    const confirmed = await toast.confirm({
+      title: 'Hapus Master Produk',
+      message: 'Apakah Anda yakin ingin menghapus produk ini dari Master?',
+      variant: 'danger',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+    });
+    if (!confirmed) return;
     try {
       const json = await api.deleteProduct(productId);
       if (!json.success) { showToast(json.error || 'Gagal menghapus produk!', 'error'); return; }
@@ -390,7 +400,14 @@ export default function DAPURZYApp() {
 
   // 8. Hapus Master Mitra
   const handleDeleteMitra = async (mitraId: string) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus mitra ini?')) return;
+    const confirmed = await toast.confirm({
+      title: 'Hapus Master Mitra',
+      message: 'Apakah Anda yakin ingin menghapus mitra ini?',
+      variant: 'danger',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+    });
+    if (!confirmed) return;
     try {
       const json = await api.deleteMitra(mitraId);
       if (!json.success) { showToast(json.error || 'Gagal menghapus mitra!', 'error'); return; }

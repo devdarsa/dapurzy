@@ -6,6 +6,7 @@ import EmptyPrerequisiteState from './EmptyPrerequisiteState';
 import { Product, Mitra } from '@/lib/types';
 import { formatRupiah, formatNumberWithDots, parseFormattedNumber } from '@/lib/utils';
 import { Calculator, MessageCircle, Zap, Handshake, AlertCircle, PlusCircle } from 'lucide-react';
+import { toast } from '@/lib/toast';
 
 interface MitraSettlementModalProps {
   isOpen: boolean;
@@ -136,7 +137,7 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMitraId || !selectedProductId || soldQty <= 0) {
-      alert('Mohon isi mitra, produk, dan jumlah transaksi yang valid!');
+      toast.warning('Mohon isi mitra, produk, dan jumlah transaksi yang valid!');
       return;
     }
 

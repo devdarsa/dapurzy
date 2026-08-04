@@ -6,6 +6,7 @@ import EmptyPrerequisiteState from './EmptyPrerequisiteState';
 import { Mitra, Product, ProductStock } from '@/lib/types';
 import { formatRupiah, formatNumberWithDots, parseFormattedNumber } from '@/lib/utils';
 import { Truck, Package, AlertCircle, PlusCircle } from 'lucide-react';
+import { toast } from '@/lib/toast';
 
 interface AmbilMitraModalProps {
   isOpen: boolean;
@@ -70,19 +71,19 @@ export default function AmbilMitraModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMitraId) {
-      alert('Pilih Mitra Konsinyasi / Toko!');
+      toast.warning('Pilih Mitra Konsinyasi / Toko!');
       return;
     }
     if (!selectedProductId) {
-      alert('Pilih Produk Jadi yang diambil!');
+      toast.warning('Pilih Produk Jadi yang diambil!');
       return;
     }
     if (quantity <= 0) {
-      alert('Jumlah produk diambil harus lebih dari 0 pcs!');
+      toast.warning('Jumlah produk diambil harus lebih dari 0 pcs!');
       return;
     }
     if (quantity > currentWarehouseStock) {
-      alert(`Stok Produk Jadi tidak mencukupi! Tersedia di Gudang: ${currentWarehouseStock} pcs, ingin diambil: ${quantity} pcs.`);
+      toast.warning(`Stok Produk Jadi tidak mencukupi! Tersedia di Gudang: ${currentWarehouseStock} pcs, ingin diambil: ${quantity} pcs.`);
       return;
     }
 

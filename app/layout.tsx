@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import PwaRegister from '@/components/PwaRegister';
+import NotificationProvider from '@/components/NotificationProvider';
 
 export const metadata: Metadata = {
   title: 'DAPURZY - Batch HPP & Consignment Management System',
@@ -37,7 +38,7 @@ export default function RootLayout({
       </head>
       <body className="antialiased selection:bg-emerald-500 selection:text-white">
         <PwaRegister />
-        {children}
+        <NotificationProvider>{children}</NotificationProvider>
       </body>
     </html>
   );
