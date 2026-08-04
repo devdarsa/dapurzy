@@ -1,5 +1,14 @@
--- Clear all existing users and insert official account: username 'develzy', PIN '250420'
-DELETE FROM `users`;
+-- Clear existing data in database
+DELETE FROM users;
+DELETE FROM products;
+DELETE FROM mitras;
+DELETE FROM purchase_batches;
+DELETE FROM product_stocks;
+DELETE FROM sales;
+DELETE FROM stock_movements;
+DELETE FROM capital_logs;
+DELETE FROM audit_logs;
 
-INSERT INTO `users` (`id`, `username`, `password_hash`, `pin`, `created_at`) 
-VALUES ('USR-001', 'develzy', 'dapurelzy', '250420', CURRENT_TIMESTAMP);
+-- Seed Official User Account 'develzy' with PIN '250423'
+INSERT INTO users (id, username, pin, role) 
+VALUES ('u-develzy', 'develzy', '250423', 'owner');

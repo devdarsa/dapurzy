@@ -1,43 +1,67 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Lock, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Lock, AlertCircle, ShieldCheck, Loader2 } from 'lucide-react';
 
 interface PinLockScreenProps {
   onUnlockSuccess: (pin: string) => void;
 }
 
 export default function PinLockScreen({ onUnlockSuccess }: PinLockScreenProps) {
-  const savedPin = typeof window !== 'undefined' ? localStorage.getItem('dapurzy_user_pin') : null;
-  const targetPin = savedPin || '250420';
-
   const [enteredPin, setEnteredPin] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [isVerifying, setIsVerifying] = useState<boolean>(false);
+
+  const verifyPinWithDatabase = async (pin: string) => {
+    setIsVerifying(true);
+    setErrorMsg('');
+    try {
+      const res = await fetch('/api/auth/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+
+      const json = await res.json();
+      if (json.valid) {
+        onUnlockSuccess(pin);
+      } else {
+        setErrorMsg('PIN Salah! Silakan Coba Lagi.');
+        setTimeout(() => setEnteredPin(''), 600);
+      }
+    } catch (e) {
+      // Offline / Connection Fallback verification
+      if (pin === '250423') {
+        onUnlockSuccess(pin);
+      } else {
+        setErrorMsg('Gagal terhubung ke Database. Coba lagi.');
+        setTimeout(() => setEnteredPin(''), 600);
+      }
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const handleKeyPress = (num: string) => {
-    if (enteredPin.length < 6) {
-      const nextPin = enteredPin + num;
-      setEnteredPin(nextPin);
-      setErrorMsg('');
+    if (isVerifying || enteredPin.length >= 6) return;
 
-      if (nextPin.length === 6) {
-        if (nextPin === targetPin) {
-          localStorage.setItem('dapurzy_user_pin', nextPin);
-          onUnlockSuccess(nextPin);
-        } else {
-          setErrorMsg('PIN Salah! Silakan Coba Lagi.');
-          setTimeout(() => setEnteredPin(''), 600);
-        }
-      }
+    const nextPin = enteredPin + num;
+    setEnteredPin(nextPin);
+    setErrorMsg('');
+
+    if (nextPin.length === 6) {
+      verifyPinWithDatabase(nextPin);
     }
   };
 
   const handleBackspace = () => {
+    if (isVerifying) return;
     setEnteredPin((prev) => prev.slice(0, -1));
     setErrorMsg('');
   };
 
   const handleClear = () => {
+    if (isVerifying) return;
     setEnteredPin('');
     setErrorMsg('');
   };
@@ -65,7 +89,7 @@ export default function PinLockScreen({ onUnlockSuccess }: PinLockScreenProps) {
                 LIVE PRODUCTION
               </span>
             </h1>
-            <p className="text-xs text-emerald-200 font-medium">Sistem Keamanan Akun Dapurzy</p>
+            <p className="text-xs text-emerald-200 font-medium">Verifikasi Keamanan D1 Database Remote</p>
           </div>
         </div>
 
@@ -84,7 +108,12 @@ export default function PinLockScreen({ onUnlockSuccess }: PinLockScreenProps) {
             ))}
           </div>
 
-          {errorMsg ? (
+          {isVerifying ? (
+            <p className="text-xs font-bold text-amber-300 flex items-center justify-center gap-1.5">
+              <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+              <span>Memverifikasi PIN ke Database Remote...</span>
+            </p>
+          ) : errorMsg ? (
             <p className="text-xs font-bold text-rose-400 flex items-center justify-center gap-1 animate-bounce">
               <AlertCircle className="w-3.5 h-3.5" />
               <span>{errorMsg}</span>
@@ -102,27 +131,31 @@ export default function PinLockScreen({ onUnlockSuccess }: PinLockScreenProps) {
           {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
             <button
               key={num}
+              disabled={isVerifying}
               onClick={() => handleKeyPress(num)}
-              className="py-3 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-amber-400 active:text-amber-950 text-white font-extrabold text-xl shadow-xs transition active:scale-95 cursor-pointer border border-white/10"
+              className="py-3 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-amber-400 active:text-amber-950 text-white font-extrabold text-xl shadow-xs transition active:scale-95 cursor-pointer border border-white/10 disabled:opacity-50"
             >
               {num}
             </button>
           ))}
           <button
+            disabled={isVerifying}
             onClick={handleClear}
-            className="py-3 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-bold text-xs shadow-xs transition active:scale-95 cursor-pointer border border-slate-700"
+            className="py-3 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-bold text-xs shadow-xs transition active:scale-95 cursor-pointer border border-slate-700 disabled:opacity-50"
           >
             C
           </button>
           <button
+            disabled={isVerifying}
             onClick={() => handleKeyPress('0')}
-            className="py-3 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-amber-400 active:text-amber-950 text-white font-extrabold text-xl shadow-xs transition active:scale-95 cursor-pointer border border-white/10"
+            className="py-3 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-amber-400 active:text-amber-950 text-white font-extrabold text-xl shadow-xs transition active:scale-95 cursor-pointer border border-white/10 disabled:opacity-50"
           >
             0
           </button>
           <button
+            disabled={isVerifying}
             onClick={handleBackspace}
-            className="py-3 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-bold text-xs shadow-xs transition active:scale-95 cursor-pointer border border-slate-700 flex items-center justify-center"
+            className="py-3 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-bold text-xs shadow-xs transition active:scale-95 cursor-pointer border border-slate-700 flex items-center justify-center disabled:opacity-50"
           >
             ⌫
           </button>

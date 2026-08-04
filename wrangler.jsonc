@@ -1,8 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "dapurzy-batch-hpp-system",
-  "account_id": "b8f91def3d949c153a0d2bdfebd2b8c1",
-  "main": ".opennext/worker.js",
+  "name": "dapurzy",
+  "account_id": "8fbec9295bb9a9580cb756a860e19c9e",
   "compatibility_date": "2024-09-23",
   "compatibility_flags": [
     "nodejs_compat"
