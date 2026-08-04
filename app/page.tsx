@@ -33,26 +33,55 @@ import { Product, Mitra, PurchaseBatch, ProductStock, AuditLog } from '@/lib/typ
 import { formatRupiah, calculatePrecisionHpp, calculateTransactionProfit } from '@/lib/utils';
 
 export default function DAPURZYApp() {
-  // --- STATE KEAMANAN PIN LIVE PRODUCTION ---
+  // --- STATE KEAMANAN PIN LIVE PRODUCTION (MASA AKTIF 3 HARI) ---
   const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
+  const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
   useEffect(() => {
     const savedUnlocked = sessionStorage.getItem('dapurzy_unlocked');
-    if (savedUnlocked === 'true') {
-      setIsUnlocked(true);
+    const savedTimestamp = localStorage.getItem('dapurzy_unlock_timestamp');
+
+    if (savedUnlocked === 'true' && savedTimestamp) {
+      const elapsed = Date.now() - Number(savedTimestamp);
+      if (elapsed > THREE_DAYS_MS) {
+        // 3 Days Expiration Limit Reached: Automatic Logout
+        handleLockApp();
+      } else {
+        setIsUnlocked(true);
+      }
+    } else {
+      setIsUnlocked(false);
     }
   }, []);
 
   const handleUnlockSuccess = (pin: string) => {
     setIsUnlocked(true);
     sessionStorage.setItem('dapurzy_unlocked', 'true');
-    showToast('Sistem DAPURZY Live Berhasil Dibuka!', 'success');
+    localStorage.setItem('dapurzy_unlock_timestamp', Date.now().toString());
+    showToast('Sistem DAPURZY Live Berhasil Dibuka! (Sesi Masa Aktif 3 Hari)', 'success');
   };
 
-  const handleLockApp = () => {
+  const handleLockApp = async () => {
     setIsUnlocked(false);
-    sessionStorage.removeItem('dapurzy_unlocked');
-    showToast('Aplikasi Terkunci!', 'error');
+    sessionStorage.clear();
+    localStorage.removeItem('dapurzy_unlock_timestamp');
+
+    // Wipe PWA Browser Cache on Logout to force fresh bundle update
+    if (typeof window !== 'undefined' && 'caches' in window) {
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map((name) => caches.delete(name)));
+      } catch (e) {
+        console.log('Cache purge error:', e);
+      }
+    }
+
+    showToast('Aplikasi Terkunci & Cache Dibersihkan Total!', 'error');
+    setTimeout(() => {
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
+    }, 300);
   };
 
   // --- STATE NAVIGATION & UI ---
@@ -67,23 +96,13 @@ export default function DAPURZYApp() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingMitra, setEditingMitra] = useState<Mitra | null>(null);
 
-  // --- STATE LIVE PRODUCTION (BERSIH TOTAL 0 DATA UJI COBA) ---
+  // --- STATE LIVE PRODUCTION ---
   const [cashBalance, setCashBalance] = useState<number>(0);
   const [activeCapital, setActiveCapital] = useState<number>(0);
-
-  // Master Produk (Bersih)
   const [products, setProducts] = useState<Product[]>([]);
-
-  // Master Mitra (Bersih)
   const [mitras, setMitras] = useState<Mitra[]>([]);
-
-  // Batch Belanja Bahan Baku (Bersih)
   const [purchaseBatches, setPurchaseBatches] = useState<PurchaseBatch[]>([]);
-
-  // Stok Per Lokasi (Bersih)
   const [stocks, setStocks] = useState<ProductStock[]>([]);
-
-  // Riwayat Transaksi Aktivitas (Bersih)
   const [transactions, setTransactions] = useState<any[]>([]);
 
   // Log Audit Trail Live
@@ -92,7 +111,7 @@ export default function DAPURZYApp() {
       id: 'AUD-LIVE-01',
       action: 'LIVE_PRODUCTION_INITIALIZED',
       trxNumber: 'SYS-LIVE-INIT',
-      details: 'DAPURZY Live System Engine Active. Clean zero state.',
+      details: 'DAPURZY Live System Engine Active with 3-Day PIN Session Expiry.',
       createdAt: new Date().toISOString(),
     },
   ]);

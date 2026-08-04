@@ -198,7 +198,7 @@ export default function DrawerMenu({
               className="w-full flex items-center space-x-2 bg-slate-800 hover:bg-slate-900 text-white p-2.5 rounded-xl shadow-xs active:scale-95 transition cursor-pointer"
             >
               <Lock className="w-4 h-4 text-amber-400" />
-              <span>Kunci Aplikasi PIN (250420)</span>
+              <span>Kunci Application & Purge Cache</span>
             </button>
           )}
 
@@ -214,7 +214,7 @@ export default function DrawerMenu({
           </button>
 
           <p className="text-[9px] text-center text-slate-400 pt-1">
-            DAPURZY Blueprint v1.2 PWA System
+            DAPURZY Blueprint v1.2 PWA System • Masa Aktif PIN 3 Hari
           </p>
         </div>
       </div>
