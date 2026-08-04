@@ -106,16 +106,26 @@ export async function GET(request: Request) {
       };
     });
 
+    const formattedBatches = batchesList.map((b: any) => {
+      let status = b.status || 'tersedia';
+      if (status === 'pending_production') status = 'tersedia';
+      if (status === 'produced' || status === 'completed') status = 'habis';
+      return {
+        ...b,
+        status,
+      };
+    });
+
     return NextResponse.json({
       success: true,
       source: 'D1_Remote',
       data: {
-        operatingCapital: Math.max(0, operatingCapital),
+        operatingCapital,
         netProfitPool: Math.max(0, netProfitPool),
         totalGrossOmzet: Math.max(0, totalGrossOmzet),
         products: products.results || [],
         mitras: formattedMitras,
-        purchaseBatches: batchesList,
+        purchaseBatches: formattedBatches,
         stocks: stocks.results || [],
         sales: salesList,
         capitalLogs: logsList,

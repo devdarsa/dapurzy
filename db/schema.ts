@@ -40,7 +40,7 @@ export const purchaseBatches = sqliteTable('purchase_batches', {
   itemsDescription: text('items_description').notNull(),
   totalCost: real('total_cost').notNull(),
   supplier: text('supplier'),
-  status: text('status', { enum: ['pending_production', 'produced', 'completed'] }).default('produced').notNull(),
+  status: text('status', { enum: ['pending_production', 'produced', 'completed', 'tersedia', 'habis'] }).default('tersedia').notNull(),
   productId: text('product_id').references(() => products.id),
   producedQty: integer('produced_qty').default(0).notNull(),
   calculatedHpp: real('calculated_hpp').default(0).notNull(),

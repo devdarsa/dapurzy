@@ -13,6 +13,9 @@ import MasterModule from '@/components/modules/MasterModule';
 import RevenueHistoryModule from '@/components/modules/RevenueHistoryModule';
 
 // Import Form Modal Dialog Components
+import BelanjaBatchModal from '@/components/modals/BelanjaBatchModal';
+import PengolahanModal from '@/components/modals/PengolahanModal';
+import AmbilMitraModal from '@/components/modals/AmbilMitraModal';
 import BatchProductionModal from '@/components/modals/BatchProductionModal';
 import MitraSettlementModal from '@/components/modals/MitraSettlementModal';
 import HomeSalesModal from '@/components/modals/HomeSalesModal';
@@ -22,7 +25,7 @@ import MitraModal from '@/components/modals/MitraModal';
 import ResetDataModal from '@/components/modals/ResetDataModal';
 
 // Import Types & Helpers
-import { Product, Mitra, PurchaseBatch, Sale, PeriodFilter } from '@/lib/types';
+import { Product, Mitra, PurchaseBatch, Sale, ProductStock, CapitalLog, PeriodFilter } from '@/lib/types';
 import { formatRupiah, formatDate } from '@/lib/utils';
 import { registerServiceWorkerAndRequestPermission } from '@/lib/notification';
 import { Users, Plus, CheckCircle2, ShoppingBag, Trophy, Calendar, Home } from 'lucide-react';
@@ -73,6 +76,10 @@ function mapBatch(r: any): PurchaseBatch {
       allocations = [];
     }
   }
+  let status = r.status ?? 'tersedia';
+  if (status === 'pending_production') status = 'tersedia';
+  if (status === 'produced' || status === 'completed') status = 'habis';
+
   return {
     id: r.id,
     batchId: r.batch_id ?? r.batchId,
@@ -80,7 +87,7 @@ function mapBatch(r: any): PurchaseBatch {
     itemsDescription: r.items_description ?? r.itemsDescription ?? '',
     totalCost: Number(r.total_cost ?? r.totalCost ?? 0),
     supplier: r.supplier ?? 'Supplier Umum',
-    status: r.status ?? 'produced',
+    status,
     productId: r.product_id ?? r.productId ?? null,
     producedQty: Number(r.produced_qty ?? r.producedQty ?? 0),
     calculatedHpp: Number(r.calculated_hpp ?? r.calculatedHpp ?? 0),
@@ -155,7 +162,17 @@ export default function DAPURZYApp() {
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [activeModal, setActiveModal] = useState<
-    'batch_production' | 'settlement' | 'home_sales' | 'capital' | 'product' | 'mitra' | 'reset' | null
+    | 'belanja_batch'
+    | 'pengolahan'
+    | 'ambil_mitra'
+    | 'batch_production'
+    | 'settlement'
+    | 'home_sales'
+    | 'capital'
+    | 'product'
+    | 'mitra'
+    | 'reset'
+    | null
   >(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingMitra, setEditingMitra] = useState<Mitra | null>(null);
@@ -170,6 +187,8 @@ export default function DAPURZYApp() {
   const [mitras, setMitras] = useState<Mitra[]>([]);
   const [purchaseBatches, setPurchaseBatches] = useState<PurchaseBatch[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [stocks, setStocks] = useState<ProductStock[]>([]);
+  const [capitalLogs, setCapitalLogs] = useState<CapitalLog[]>([]);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
@@ -196,6 +215,8 @@ export default function DAPURZYApp() {
         setMitras((d.mitras ?? []).map(mapMitra));
         setPurchaseBatches((d.purchaseBatches ?? []).map(mapBatch));
         setSales((d.sales ?? []).map(mapSale));
+        setStocks(d.stocks ?? []);
+        setCapitalLogs(d.capitalLogs ?? []);
       }
     } catch (e) {
       showToast('Koneksi ke database gagal.', 'error');
@@ -206,9 +227,9 @@ export default function DAPURZYApp() {
 
   // ── HANDLERS ───────────────────────────────────────────────────────────────
 
-  // 1. Injeksi Modal Usaha
-  const handleCapital = async (data: { amount: number; note: string }) => {
-    const { amount, note } = data;
+  // 1. Injeksi atau Pengurangan Modal Usaha
+  const handleCapital = async (data: { amount: number; note: string; type?: 'INJECTION' | 'WITHDRAWAL' }) => {
+    const { amount, note, type = 'INJECTION' } = data;
     if (amount <= 0) {
       showToast('Nominal modal harus lebih besar dari 0!', 'error');
       return;
@@ -221,16 +242,152 @@ export default function DAPURZYApp() {
       const res = await fetch('/api/capital', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, trxNumber, amount, note: note || 'Injeksi Modal Usaha' }),
+        body: JSON.stringify({ id, trxNumber, amount, note, type }),
       });
       const json = await res.json();
-      if (!json.success) { showToast(json.error || 'Gagal menyimpan injeksi modal!', 'error'); return; }
+      if (!json.success) { showToast(json.error || 'Gagal menyimpan transaksi modal!', 'error'); return; }
 
-      showToast(`Injeksi modal ${formatRupiah(amount)} berhasil disimpan!`);
+      const actionMsg = type === 'WITHDRAWAL' ? 'Pengurangan / koreksi modal' : 'Injeksi modal';
+      showToast(`${actionMsg} ${formatRupiah(amount)} berhasil disimpan!`);
       setActiveModal(null);
       await loadFromD1();
     } catch (e) {
-      showToast('Koneksi ke database gagal saat injeksi modal.', 'error');
+      showToast('Koneksi ke database gagal saat transaksi modal.', 'error');
+    }
+  };
+
+  // 1e. Hapus Log Modal Usaha
+  const handleDeleteCapitalLog = async (logId: string) => {
+    try {
+      const res = await fetch(`/api/capital?id=${logId}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!json.success) { showToast(json.error || 'Gagal menghapus log modal!', 'error'); return; }
+
+      showToast('Log modal berhasil dihapus!');
+      await loadFromD1();
+    } catch (e) {
+      showToast('Koneksi database gagal saat menghapus log modal.', 'error');
+    }
+  };
+
+  // 1b. Modul Belanja (Batch Baru - Status Tersedia, Memotong Kas Modal)
+  const handleBelanjaBatch = async (data: { date: string; itemsDescription: string; totalCost: number }) => {
+    const { date, itemsDescription, totalCost } = data;
+    const batchSeq = String(purchaseBatches.length + 1).padStart(3, '0');
+    const batchId = `BATCH-${new Date().getFullYear()}-${batchSeq}`;
+    const id = `PB-${Date.now()}`;
+
+    try {
+      const res = await fetch('/api/purchases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          batchId,
+          itemsDescription,
+          totalCost,
+          date,
+          supplier: 'Supplier Umum',
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) { showToast(json.error || 'Gagal menyimpan batch belanja!', 'error'); return; }
+
+      showToast(`Batch Belanja ${batchId} berhasil disimpan! (${formatRupiah(totalCost)} memotong Kas Modal)`);
+      setActiveModal(null);
+      await loadFromD1();
+    } catch (e) {
+      showToast('Koneksi database gagal saat menyimpan batch belanja.', 'error');
+    }
+  };
+
+  // 1c. Modul Pembuatan / Pengolahan (Batch Tersedia -> Status Habis, Masuk Stok Produk Jadi)
+  const handlePengolahan = async (data: {
+    batchId: string;
+    productId: string;
+    producedQty: number;
+    calculatedHpp: number;
+  }) => {
+    const { batchId, productId, producedQty, calculatedHpp } = data;
+
+    try {
+      const res = await fetch('/api/purchases', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          batchId,
+          productId,
+          producedQty,
+          calculatedHpp,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) { showToast(json.error || 'Gagal memproses pengolahan batch!', 'error'); return; }
+
+      showToast(`Pengolahan selesai! ${producedQty} pcs masuk ke Stok Produk Jadi (HPP: ${formatRupiah(calculatedHpp)})`);
+      setActiveModal(null);
+      await loadFromD1();
+    } catch (e) {
+      showToast('Koneksi database gagal saat memproses pengolahan.', 'error');
+    }
+  };
+
+  // 1d. Modul Ambil Produk Mitra (Stok Produk Jadi -> Stok Mitra)
+  const handleAmbilMitra = async (data: {
+    mitraId: string;
+    productId: string;
+    quantity: number;
+    note?: string;
+  }) => {
+    const { mitraId, productId, quantity, note } = data;
+    const mitraObj = mitras.find((m) => m.id === mitraId);
+
+    const sourceStock = stocks.find((s) => s.productId === productId && s.locationType === 'gudang');
+    const targetStock = stocks.find((s) => s.productId === productId && s.locationType === 'mitra' && s.mitraId === mitraId);
+
+    const sourceStockId = sourceStock?.id;
+    const sourceNewQty = Math.max(0, (sourceStock?.quantity || 0) - quantity);
+
+    const targetStockId = targetStock?.id;
+    const targetNewQty = (targetStock?.quantity || 0) + quantity;
+
+    const newTargetStock = !targetStockId
+      ? {
+          id: `STK-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          productId,
+          locationType: 'mitra',
+          mitraId,
+          quantity,
+        }
+      : undefined;
+
+    try {
+      const res = await fetch('/api/movements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: `MOV-${Date.now()}`,
+          trxNumber: `TRX-AMBIL-${Date.now().toString().slice(-6)}`,
+          productId,
+          type: 'GUDANG_TO_MITRA',
+          mitraId,
+          quantity,
+          note: note || `Ambil ${quantity} pcs oleh ${mitraObj?.name || 'Mitra'}`,
+          sourceStockId,
+          sourceNewQty,
+          targetStockId,
+          targetNewQty,
+          newTargetStock,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) { showToast(json.error || 'Gagal mencatat pengambilan mitra!', 'error'); return; }
+
+      showToast(`Pengambilan ${quantity} pcs oleh ${mitraObj?.name || 'Mitra'} berhasil dicatat!`);
+      setActiveModal(null);
+      await loadFromD1();
+    } catch (e) {
+      showToast('Koneksi database gagal saat mencatat pengambilan mitra.', 'error');
     }
   };
 
@@ -568,6 +725,7 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
             products={products}
             mitras={mitras}
             sales={sales}
+            stocks={stocks}
             onOpenModal={(modal) => setActiveModal(modal)}
           />
         )}
@@ -763,6 +921,30 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
       </main>
 
       {/* FORM MODAL DIALOGS */}
+      <BelanjaBatchModal
+        isOpen={activeModal === 'belanja_batch'}
+        onClose={() => setActiveModal(null)}
+        operatingCapital={operatingCapital}
+        onSubmit={handleBelanjaBatch}
+      />
+
+      <PengolahanModal
+        isOpen={activeModal === 'pengolahan'}
+        onClose={() => setActiveModal(null)}
+        availableBatches={purchaseBatches.filter((b) => b.status === 'tersedia' || b.status === 'pending_production')}
+        products={products}
+        onSubmit={handlePengolahan}
+      />
+
+      <AmbilMitraModal
+        isOpen={activeModal === 'ambil_mitra'}
+        onClose={() => setActiveModal(null)}
+        mitras={mitras}
+        products={products}
+        stocks={stocks}
+        onSubmit={handleAmbilMitra}
+      />
+
       <BatchProductionModal
         isOpen={activeModal === 'batch_production'}
         onClose={() => setActiveModal(null)}
@@ -788,7 +970,10 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
       <CapitalModal
         isOpen={activeModal === 'capital'}
         onClose={() => setActiveModal(null)}
+        operatingCapital={operatingCapital}
+        capitalLogs={capitalLogs}
         onSubmit={handleCapital}
+        onDeleteLog={handleDeleteCapitalLog}
       />
 
       <ProductModal

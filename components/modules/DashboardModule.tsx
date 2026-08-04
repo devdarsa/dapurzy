@@ -5,13 +5,16 @@ import {
   Wallet,
   TrendingUp,
   Box,
-  PlusCircle,
+  ShoppingBag,
+  ChefHat,
+  Truck,
   CheckCircle2,
   Home,
   Trophy,
   Calendar,
+  Sparkles,
 } from 'lucide-react';
-import { PurchaseBatch, Product, Mitra, Sale, PeriodFilter } from '@/lib/types';
+import { PurchaseBatch, Product, Mitra, Sale, PeriodFilter, ProductStock } from '@/lib/types';
 import { formatRupiah } from '@/lib/utils';
 
 interface DashboardModuleProps {
@@ -22,8 +25,17 @@ interface DashboardModuleProps {
   products: Product[];
   mitras: Mitra[];
   sales: Sale[];
+  stocks?: ProductStock[];
   onOpenModal: (
-    modal: 'batch_production' | 'settlement' | 'home_sales' | 'capital' | 'product' | 'mitra'
+    modal:
+      | 'belanja_batch'
+      | 'pengolahan'
+      | 'ambil_mitra'
+      | 'settlement'
+      | 'home_sales'
+      | 'capital'
+      | 'product'
+      | 'mitra'
   ) => void;
 }
 
@@ -35,6 +47,7 @@ export default function DashboardModule({
   products,
   mitras,
   sales,
+  stocks = [],
   onOpenModal,
 }: DashboardModuleProps) {
   const [period, setPeriod] = useState<PeriodFilter>('all');
@@ -99,7 +112,19 @@ export default function DashboardModule({
   }, [filteredSales, mitras]);
 
   // Recent batches
-  const activeBatches = purchaseBatches.slice(0, 5);
+  const activeBatches = purchaseBatches.slice(0, 6);
+
+  // Available batches count (status Tersedia)
+  const tersediaBatchesCount = useMemo(() => {
+    return purchaseBatches.filter((b) => b.status === 'tersedia' || b.status === 'pending_production').length;
+  }, [purchaseBatches]);
+
+  // Total Finished Goods Stock (Gudang)
+  const totalWarehouseStock = useMemo(() => {
+    return stocks
+      .filter((s) => s.locationType === 'gudang')
+      .reduce((sum, s) => sum + (Number(s.quantity) || 0), 0);
+  }, [stocks]);
 
   return (
     <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-200">
@@ -137,25 +162,25 @@ export default function DashboardModule({
         </div>
       </div>
 
-      {/* FINANCIAL OVERVIEW (3 WALLETS CARD) */}
+      {/* FINANCIAL OVERVIEW (KAS MODAL & PROFIT CARD) */}
       <div className="bg-gradient-to-br from-emerald-950 via-slate-900 to-emerald-900 text-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-lg relative overflow-hidden border border-emerald-800/60 space-y-3.5">
         <div className="flex justify-between items-start gap-2 min-w-0">
           <div className="min-w-0 flex-1">
             <span className="text-[11px] sm:text-xs font-bold text-emerald-300 uppercase tracking-wider block">
-              🏦 Kas Modal Operasional
+              🏦 Kas Modal Usaha (Saldo Terpotong Belanja)
             </span>
             <h2 className="text-2xl sm:text-3xl font-black text-amber-400 mt-0.5 tracking-tight truncate">
               {formatRupiah(operatingCapital)}
             </h2>
             <p className="text-[10px] text-emerald-200/80 mt-0.5 font-medium truncate">
-              (Terisi kembali dari HPP setoran)
+              (Setiap Belanja memotong Kas Modal & terisi dari HPP Setoran)
             </p>
           </div>
           <button
             onClick={() => onOpenModal('capital')}
             className="bg-emerald-800/90 hover:bg-emerald-700 text-emerald-100 font-extrabold text-xs px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl border border-emerald-700/80 shadow-xs active:scale-95 transition cursor-pointer whitespace-nowrap shrink-0"
           >
-            + Modal
+            + Injeksi Modal
           </button>
         </div>
 
@@ -179,85 +204,123 @@ export default function DashboardModule({
         </div>
       </div>
 
-      {/* 3 MAIN QUICK ACTION BUTTONS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        <button
-          onClick={() => onOpenModal('batch_production')}
-          className="p-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm flex items-center justify-between shadow-md active:scale-95 transition cursor-pointer group"
-        >
-          <div className="flex items-center gap-2.5 text-left">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/80 flex items-center justify-center text-white shadow-inner">
-              <PlusCircle className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="font-black leading-tight">Belanja & Produksi</p>
-              <p className="text-[10px] font-normal text-emerald-100">Input Batch & Titip</p>
-            </div>
+      {/* QUICK STATUS SUMMARY BAR */}
+      <div className="grid grid-cols-2 gap-2.5 text-xs">
+        <div className="bg-amber-50 border border-amber-200 p-3 rounded-2xl flex justify-between items-center">
+          <div>
+            <span className="text-[10px] text-amber-800 font-bold block">Batch Belanja Tersedia:</span>
+            <span className="text-sm font-black text-amber-900">{tersediaBatchesCount} Batch Siap Olah</span>
           </div>
-          <span className="text-base">➔</span>
-        </button>
-
-        <button
-          onClick={() => onOpenModal('settlement')}
-          className="p-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs sm:text-sm flex items-center justify-between shadow-md active:scale-95 transition cursor-pointer group border border-slate-800"
-        >
-          <div className="flex items-center gap-2.5 text-left">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/90 flex items-center justify-center text-amber-950 shadow-inner">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="font-black leading-tight">Rekap Setoran Mitra</p>
-              <p className="text-[10px] font-normal text-slate-300">Setor Uang Warung</p>
-            </div>
+          <span className="text-xl">📦</span>
+        </div>
+        <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl flex justify-between items-center">
+          <div>
+            <span className="text-[10px] text-emerald-800 font-bold block">Stok Produk Jadi (Gudang):</span>
+            <span className="text-sm font-black text-emerald-900">{totalWarehouseStock} Pcs Tersedia</span>
           </div>
-          <span className="text-base">➔</span>
-        </button>
-
-        <button
-          onClick={() => onOpenModal('home_sales')}
-          className="p-3.5 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs sm:text-sm flex items-center justify-between shadow-md active:scale-95 transition cursor-pointer group"
-        >
-          <div className="flex items-center gap-2.5 text-left">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-inner">
-              <Home className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="font-black leading-tight">Setor Uang Rumah</p>
-              <p className="text-[10px] font-normal text-amber-100">Toples Jual Rumah 1-Tap</p>
-            </div>
-          </div>
-          <span className="text-base">➔</span>
-        </button>
+          <span className="text-xl">🍞</span>
+        </div>
       </div>
 
-      {/* SECONDARY QUICK ACTIONS: MASTER DATA CREATION */}
-      <div className="grid grid-cols-2 gap-2.5">
+      {/* MAIN OPERATIONAL MODULE ACTION BUTTONS (SEPARATED ACCORDING TO ALUR) */}
+      <div className="space-y-2">
+        <h3 className="text-xs font-black text-slate-700 uppercase tracking-wider pl-1 flex items-center gap-1">
+          <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> Modul Utama Alur Operasional
+        </h3>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {/* Modul 2: Belanja (Batch) */}
+          <button
+            onClick={() => onOpenModal('belanja_batch')}
+            className="p-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm flex items-center justify-between shadow-md active:scale-95 transition cursor-pointer group"
+          >
+            <div className="flex items-center gap-2.5 text-left">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-inner">
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="font-black leading-tight">1. Belanja (Buat Batch)</p>
+                <p className="text-[10px] font-normal text-emerald-100">Potong Kas Modal → Status Tersedia</p>
+              </div>
+            </div>
+            <span className="text-base">➔</span>
+          </button>
+
+          {/* Modul 3: Pembuatan / Pengolahan */}
+          <button
+            onClick={() => onOpenModal('pengolahan')}
+            className="p-3.5 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs sm:text-sm flex items-center justify-between shadow-md active:scale-95 transition cursor-pointer group"
+          >
+            <div className="flex items-center gap-2.5 text-left">
+              <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-inner">
+                <ChefHat className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="font-black leading-tight">2. Pembuatan / Pengolahan</p>
+                <p className="text-[10px] font-normal text-amber-100">Olah Batch Tersedia → Hitung HPP</p>
+              </div>
+            </div>
+            <span className="text-base">➔</span>
+          </button>
+
+          {/* Modul 4a: Ambil Produk Mitra */}
+          <button
+            onClick={() => onOpenModal('ambil_mitra')}
+            className="p-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs sm:text-sm flex items-center justify-between shadow-md active:scale-95 transition cursor-pointer group"
+          >
+            <div className="flex items-center gap-2.5 text-left">
+              <div className="w-9 h-9 rounded-xl bg-blue-500 flex items-center justify-center text-white shadow-inner">
+                <Truck className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="font-black leading-tight">3. Ambil Produk Mitra</p>
+                <p className="text-[10px] font-normal text-blue-100">Ambil dari Stok Produk Jadi</p>
+              </div>
+            </div>
+            <span className="text-base">➔</span>
+          </button>
+
+          {/* Modul 4b: Setor Mitra */}
+          <button
+            onClick={() => onOpenModal('settlement')}
+            className="p-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs sm:text-sm flex items-center justify-between shadow-md active:scale-95 transition cursor-pointer group border border-slate-800"
+          >
+            <div className="flex items-center gap-2.5 text-left">
+              <div className="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-amber-950 shadow-inner">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="font-black leading-tight">4. Setor Mitra (Konsinyasi/Cash)</p>
+                <p className="text-[10px] font-normal text-slate-300">Setor Omset & Kembalikan HPP</p>
+              </div>
+            </div>
+            <span className="text-base">➔</span>
+          </button>
+        </div>
+      </div>
+
+      {/* SECONDARY QUICK ACTIONS */}
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          onClick={() => onOpenModal('home_sales')}
+          className="p-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
+        >
+          <Home className="w-3.5 h-3.5" />
+          <span>Setor Rumah</span>
+        </button>
+
         <button
           onClick={() => onOpenModal('product')}
-          className="p-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 font-extrabold text-xs flex items-center justify-between border border-slate-200 shadow-xs active:scale-95 transition cursor-pointer"
+          className="p-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-extrabold text-xs flex items-center justify-center gap-1.5 border border-slate-200 shadow-xs transition cursor-pointer"
         >
-          <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-black">📦</span>
-            <div className="text-left">
-              <p className="font-black text-slate-800">Master Produk</p>
-              <p className="text-[10px] text-slate-500 font-normal">+ Tambah Produk Baru</p>
-            </div>
-          </div>
-          <span className="text-xs text-emerald-600 font-black">+</span>
+          <span>📦 + Produk</span>
         </button>
 
         <button
           onClick={() => onOpenModal('mitra')}
-          className="p-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 font-extrabold text-xs flex items-center justify-between border border-slate-200 shadow-xs active:scale-95 transition cursor-pointer"
+          className="p-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-extrabold text-xs flex items-center justify-center gap-1.5 border border-slate-200 shadow-xs transition cursor-pointer"
         >
-          <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center font-black">🤝</span>
-            <div className="text-left">
-              <p className="font-black text-slate-800">Master Mitra</p>
-              <p className="text-[10px] text-slate-500 font-normal">+ Tambah Mitra Baru</p>
-            </div>
-          </div>
-          <span className="text-xs text-amber-600 font-black">+</span>
+          <span>🤝 + Mitra</span>
         </button>
       </div>
 
@@ -310,7 +373,7 @@ export default function DashboardModule({
       <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
         <div className="flex justify-between items-center border-b border-slate-100 pb-2">
           <h3 className="font-extrabold text-xs sm:text-sm text-slate-800 flex items-center gap-1.5">
-            <Box className="w-4 h-4 text-purple-600" /> Riwayat Batch Produksi & Distribusi Terakhir
+            <Box className="w-4 h-4 text-purple-600" /> Status Batch Belanja & Produksi
           </h3>
           <span className="text-[10px] font-black bg-purple-100 text-purple-800 px-2.5 py-0.5 rounded-full">
             {purchaseBatches.length} Total Batch
@@ -319,31 +382,32 @@ export default function DashboardModule({
 
         {activeBatches.length === 0 ? (
           <div className="text-center py-6 text-slate-400 text-xs">
-            Belum ada batch belanja/produksi. Klik <b>"Belanja & Produksi Baru"</b> untuk memulai siklus pertama!
+            Belum ada batch belanja/produksi. Klik <b>"1. Belanja (Buat Batch)"</b> untuk memulai siklus pertama!
           </div>
         ) : (
           <div className="space-y-3">
             {activeBatches.map((b) => {
               const product = products.find((p) => p.id === b.productId);
-              let allocationsList: any[] = [];
-              if (b.allocations) {
-                try {
-                  allocationsList = typeof b.allocations === 'string' ? JSON.parse(b.allocations) : b.allocations;
-                } catch (e) {
-                  allocationsList = [];
-                }
-              }
-
-              const totalTitipMitra = allocationsList.reduce((sum, a) => sum + (Number(a.quantity) || 0), 0);
-              const homeAllocation = Math.max(0, b.producedQty - totalTitipMitra);
+              const isTersedia = b.status === 'tersedia' || b.status === 'pending_production';
 
               return (
                 <div key={b.id} className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className="text-[10px] font-black bg-amber-400 text-amber-950 px-2 py-0.5 rounded-md">
-                        {b.batchId}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black bg-slate-200 text-slate-800 px-2 py-0.5 rounded-md">
+                          {b.batchId}
+                        </span>
+                        {isTersedia ? (
+                          <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full">
+                            ● Status: Tersedia
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-extrabold bg-slate-100 text-slate-500 border border-slate-300 px-2 py-0.5 rounded-full">
+                            ✓ Status: Habis
+                          </span>
+                        )}
+                      </div>
                       <h4 className="font-black text-slate-800 text-xs sm:text-sm mt-1">
                         {b.itemsDescription}
                       </h4>
@@ -354,33 +418,28 @@ export default function DashboardModule({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs pt-1 border-t border-slate-200/60">
-                    <div className="bg-white p-2 rounded-xl border border-slate-200">
-                      <span className="text-[10px] text-slate-400 font-bold block">Hasil Produksi:</span>
-                      <span className="font-extrabold text-slate-800">{b.producedQty} pcs ({product?.name || 'Produk'})</span>
+                  {!isTersedia && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs pt-1 border-t border-slate-200/60">
+                      <div className="bg-white p-2 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-400 font-bold block">Hasil Pengolahan:</span>
+                        <span className="font-extrabold text-slate-800">{b.producedQty} pcs ({product?.name || 'Produk'})</span>
+                      </div>
+                      <div className="bg-white p-2 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-amber-700 font-bold block">HPP Terhitung:</span>
+                        <span className="font-black text-amber-900">{formatRupiah(b.calculatedHpp)} / unit</span>
+                      </div>
                     </div>
-                    <div className="bg-white p-2 rounded-xl border border-slate-200">
-                      <span className="text-[10px] text-amber-700 font-bold block">HPP per Unit:</span>
-                      <span className="font-black text-amber-900">{formatRupiah(b.calculatedHpp)}</span>
-                    </div>
-                    <div className="bg-emerald-50 p-2 rounded-xl border border-emerald-200 col-span-2 sm:col-span-1">
-                      <span className="text-[10px] text-emerald-800 font-bold block">🏡 Alokasi Jual Rumah:</span>
-                      <span className="font-black text-emerald-900">{homeAllocation} pcs</span>
-                    </div>
-                  </div>
+                  )}
 
-                  {/* Mitra Allocations Badge */}
-                  {allocationsList.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {allocationsList.map((alloc, idx) => {
-                        const m = mitras.find((x) => x.id === alloc.mitraId);
-                        return (
-                          <span key={idx} className="text-[10px] font-bold bg-white text-slate-700 border border-slate-300 px-2 py-0.5 rounded-lg flex items-center gap-1">
-                            <span>🤝 {m?.name || 'Mitra'}:</span>
-                            <strong className="text-emerald-700">{alloc.quantity} pcs</strong>
-                          </span>
-                        );
-                      })}
+                  {isTersedia && (
+                    <div className="pt-1">
+                      <button
+                        onClick={() => onOpenModal('pengolahan')}
+                        className="w-full bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1 shadow-xs"
+                      >
+                        <ChefHat className="w-3.5 h-3.5" />
+                        <span>Lakukan Pengolahan Batch Ini</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -392,5 +451,3 @@ export default function DashboardModule({
     </div>
   );
 }
-
-

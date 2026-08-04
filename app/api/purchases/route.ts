@@ -36,17 +36,19 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, batchId, itemsDescription, totalCost, supplier, items } = body;
+    const { id, batchId, itemsDescription, totalCost, supplier, items, date } = body;
 
     if (!itemsDescription || !totalCost || totalCost <= 0) {
       return NextResponse.json({ success: false, error: 'Deskripsi dan total biaya belanja harus valid' }, { status: 400 });
     }
 
+    const createdAtVal = date ? `${date} 12:00:00` : new Date().toISOString().replace('T', ' ').substring(0, 19);
+
     await db
       .prepare(
-        'INSERT INTO purchase_batches (id, batch_id, items_description, total_cost, supplier, status, product_id, produced_qty, calculated_hpp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO purchase_batches (id, batch_id, items_description, total_cost, supplier, status, product_id, produced_qty, calculated_hpp, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
       )
-      .bind(id, batchId, itemsDescription, totalCost, supplier || 'Supplier Umum', 'pending_production', null, 0, 0)
+      .bind(id, batchId, itemsDescription, totalCost, supplier || 'Supplier Umum', 'tersedia', null, 0, 0, createdAtVal)
       .run();
 
     // Insert individual purchase_items if provided
@@ -143,10 +145,10 @@ export async function PUT(request: Request) {
       ? explicitHpp
       : (totalQty > 0 ? Math.ceil((batchCost / totalQty) / 100) * 100 : 0);
 
-    // 1. Mark purchase_batch as produced
+    // 1. Mark purchase_batch as habis (used up for production)
     await db
       .prepare('UPDATE purchase_batches SET status = ?, product_id = ?, produced_qty = ?, calculated_hpp = ? WHERE batch_id = ?')
-      .bind('produced', itemsToProcess[0].productId, totalQty, finalHpp, batchId)
+      .bind('habis', itemsToProcess[0].productId, totalQty, finalHpp, batchId)
       .run();
 
     // 2. Process each produced product output

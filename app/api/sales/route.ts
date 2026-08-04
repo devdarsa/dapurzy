@@ -95,7 +95,53 @@ export async function POST(request: Request) {
         .run();
     }
 
-    // 3. Audit log
+    // 3. Update product_stocks
+    if (mitraId) {
+      // Reduce Mitra stock by total handled items (sold + returned)
+      const totalHandled = soldQty + returnedQty;
+      const mitraStockRow = await db
+        .prepare("SELECT * FROM product_stocks WHERE productId = ? AND location_type = 'mitra' AND mitra_id = ?")
+        .bind(productId, mitraId)
+        .first();
+
+      if (mitraStockRow) {
+        const newMitraQty = Math.max(0, (mitraStockRow.quantity || 0) - totalHandled);
+        await db.prepare('UPDATE product_stocks SET quantity = ? WHERE id = ?').bind(newMitraQty, mitraStockRow.id).run();
+      }
+
+      // If returned items exist, return them to Gudang stock
+      if (returnedQty > 0) {
+        const gudangStockRow = await db
+          .prepare("SELECT * FROM product_stocks WHERE productId = ? AND location_type = 'gudang'")
+          .bind(productId)
+          .first();
+
+        if (gudangStockRow) {
+          await db
+            .prepare('UPDATE product_stocks SET quantity = quantity + ? WHERE id = ?')
+            .bind(returnedQty, gudangStockRow.id)
+            .run();
+        } else {
+          await db
+            .prepare("INSERT INTO product_stocks (id, productId, location_type, mitra_id, quantity) VALUES (?, ?, 'gudang', null, ?)")
+            .bind(`STK-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, productId, returnedQty)
+            .run();
+        }
+      }
+    } else if (saleType === 'DIRECT' && soldQty > 0) {
+      // Direct home sale: reduce Gudang stock
+      const gudangStockRow = await db
+        .prepare("SELECT * FROM product_stocks WHERE productId = ? AND location_type = 'gudang'")
+        .bind(productId)
+        .first();
+
+      if (gudangStockRow) {
+        const newGudangQty = Math.max(0, (gudangStockRow.quantity || 0) - soldQty);
+        await db.prepare('UPDATE product_stocks SET quantity = ? WHERE id = ?').bind(newGudangQty, gudangStockRow.id).run();
+      }
+    }
+
+    // 4. Audit log
     await db
       .prepare('INSERT INTO audit_logs (id, action, trx_number, details) VALUES (?, ?, ?, ?)')
       .bind(

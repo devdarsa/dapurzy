@@ -59,30 +59,26 @@ export default function MitraSettlementModal({
   const selectedProduct = useMemo(() => products.find((p) => p.id === selectedProductId) || products[0], [products, selectedProductId]);
 
   // Resolve standard custom price for this mitra if exists, otherwise product price
-  const baseMitraPrice = useMemo(() => {
-    if (!selectedMitra || !selectedProduct) return 0;
+  const { baseMitraPrice, isCustomPrice } = useMemo(() => {
+    if (!selectedMitra || !selectedProduct) return { baseMitraPrice: 0, isCustomPrice: false };
     if (selectedMitra.customPrices) {
       const pricesMap = typeof selectedMitra.customPrices === 'string' ? JSON.parse(selectedMitra.customPrices) : selectedMitra.customPrices;
       if (pricesMap && pricesMap[selectedProduct.id] && Number(pricesMap[selectedProduct.id]) > 0) {
-        return Number(pricesMap[selectedProduct.id]);
+        return { baseMitraPrice: Number(pricesMap[selectedProduct.id]), isCustomPrice: true };
       }
     }
-    return selectedProduct.price || 0;
+    return { baseMitraPrice: selectedProduct.price || 0, isCustomPrice: false };
   }, [selectedMitra, selectedProduct]);
 
-  // Sync custom price input when base price or product changes
+  // Reset custom price override whenever selected mitra or product changes
   useEffect(() => {
-    if (baseMitraPrice > 0 && !customPriceInput) {
-      setCustomPriceInput(formatNumberWithDots(baseMitraPrice));
-    }
-  }, [baseMitraPrice, customPriceInput]);
+    setCustomPriceInput('');
+  }, [selectedMitraId, selectedProductId]);
 
   if (!isOpen) return null;
 
-  // Final price to use
-  const effectivePrice = transactionType === 'BELI_PUTUS' && customPriceInput
-    ? parseFormattedNumber(customPriceInput)
-    : baseMitraPrice;
+  // Final price to use: defaults automatically to baseMitraPrice, but allows override if user typed one
+  const effectivePrice = customPriceInput ? parseFormattedNumber(customPriceInput) : baseMitraPrice;
 
   // Quantities calculation
   const titipQty = transactionType === 'BELI_PUTUS' ? parseFormattedNumber(directQtyInput) : parseFormattedNumber(titipQtyInput);
@@ -221,8 +217,29 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
         </div>
 
         {/* INPUT TRANSAKSI TERHUBUNG SKEMA */}
+        {/* INFORMASI HARGA OTOMATIS MITRA */}
+        <div className="bg-slate-50 border border-slate-200 p-2.5 sm:p-3 rounded-2xl flex justify-between items-center text-xs">
+          <div>
+            <span className="text-[10px] text-slate-500 font-bold block">Harga Jual Mitra (Otomatis):</span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="font-black text-emerald-800 text-sm">{formatRupiah(effectivePrice)} / pcs</span>
+              {isCustomPrice ? (
+                <span className="text-[9px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-md">
+                  ✨ Harga Khusus Mitra
+                </span>
+              ) : (
+                <span className="text-[9px] font-medium text-slate-500 bg-slate-200 px-2 py-0.5 rounded-md">
+                  Harga Default Master
+                </span>
+              )}
+            </div>
+          </div>
+          <span className="text-xl">🏷️</span>
+        </div>
+
+        {/* INPUT TRANSAKSI TERHUBUNG SKEMA */}
         {transactionType === 'BELI_PUTUS' ? (
-          <div className="bg-emerald-50/80 p-3 rounded-2xl border border-emerald-200 space-y-3">
+          <div className="bg-emerald-50/80 p-3.5 rounded-2xl border border-emerald-200 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-emerald-900 flex items-center gap-1">
                 <Zap className="w-4 h-4 text-emerald-600" /> Transaksi Direct Cash Beli Putus
@@ -232,40 +249,22 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Jumlah Beli (Pcs)</label>
-                <input
-                  type="text"
-                  value={directQtyInput}
-                  onChange={(e) => setDirectQtyInput(formatNumberWithDots(e.target.value))}
-                  required
-                  placeholder="50"
-                  className="w-full p-2.5 rounded-xl border border-slate-300 font-black text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none bg-white text-base text-center"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Harga Mitra (Rp/Pcs)</label>
-                <input
-                  type="text"
-                  value={customPriceInput || formatNumberWithDots(baseMitraPrice)}
-                  onChange={(e) => setCustomPriceInput(formatNumberWithDots(e.target.value))}
-                  required
-                  className="w-full p-2.5 rounded-xl border border-slate-300 font-black text-emerald-700 focus:ring-2 focus:ring-emerald-500 outline-none bg-white text-base text-center"
-                />
-              </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Jumlah Barang Dibeli (Pcs)</label>
+              <input
+                type="text"
+                value={directQtyInput}
+                onChange={(e) => setDirectQtyInput(formatNumberWithDots(e.target.value))}
+                required
+                placeholder="Contoh: 50"
+                className="w-full p-3 rounded-xl border border-slate-300 font-black text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none bg-white text-base text-center"
+              />
             </div>
           </div>
         ) : (
           /* KONSINYASI FORM */
           <div className="space-y-3">
-            <div className="bg-slate-100 p-2.5 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
-              <span className="font-bold text-slate-600">Harga Disepakati Mitra Ini:</span>
-              <span className="font-black text-emerald-800 text-sm">{formatRupiah(effectivePrice)} / unit</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 bg-amber-50/70 p-3 rounded-2xl border border-amber-200">
+            <div className="grid grid-cols-2 gap-3 bg-amber-50/70 p-3.5 rounded-2xl border border-amber-200">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Jumlah Dititipkan (Pcs)</label>
                 <input

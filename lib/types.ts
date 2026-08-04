@@ -35,7 +35,7 @@ export interface PurchaseBatch {
   itemsDescription: string;
   totalCost: number;
   supplier?: string | null;
-  status: 'pending_production' | 'produced' | 'completed';
+  status: 'tersedia' | 'habis' | 'pending_production' | 'produced' | 'completed';
   productId?: string | null;
   producedQty: number;
   calculatedHpp: number;

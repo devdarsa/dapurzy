@@ -51,7 +51,7 @@ CREATE TABLE `purchase_batches` (
 	`items_description` text NOT NULL,
 	`total_cost` real NOT NULL,
 	`supplier` text,
-	`status` text DEFAULT 'produced' NOT NULL,
+	`status` text DEFAULT 'tersedia' NOT NULL,
 	`product_id` text,
 	`produced_qty` integer DEFAULT 0 NOT NULL,
 	`calculated_hpp` real DEFAULT 0 NOT NULL,
