@@ -27,23 +27,23 @@ export default function Navbar({ onOpenDrawer, onOpenPurchaseModal }: NavbarProp
               className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl object-cover shadow-xs border border-amber-400/80"
             />
             <div>
-              <h1 className="font-extrabold text-sm sm:text-base tracking-wide leading-tight flex items-center gap-1.5">
+              <h1 className="font-black text-sm sm:text-base tracking-tight leading-tight flex items-center gap-1.5 text-white">
                 DAPURZY{' '}
                 <span className="text-[10px] bg-amber-400 text-amber-950 px-1.5 py-0.5 rounded-md font-black">
-                  v1.2
+                  Ultra-Lean
                 </span>
               </h1>
-              <p className="text-xs text-emerald-200 font-medium">Batch Procurement & Auto-HPP</p>
+              <p className="text-[10px] text-emerald-200 font-medium">Sistem Operasional Dapurzy</p>
             </div>
           </div>
         </div>
 
         <button
           onClick={onOpenPurchaseModal}
-          className="bg-amber-400 hover:bg-amber-300 text-amber-950 font-extrabold text-xs sm:text-sm px-3.5 py-2 rounded-xl shadow-xs flex items-center space-x-1.5 active:scale-95 transition cursor-pointer"
+          className="bg-amber-400 hover:bg-amber-300 text-amber-950 font-black text-xs sm:text-sm px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl shadow-xs flex items-center space-x-1 active:scale-95 transition cursor-pointer whitespace-nowrap shrink-0"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
-          <span>Belanja</span>
+          <span>+ Belanja</span>
         </button>
       </div>
     </header>

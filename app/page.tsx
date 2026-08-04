@@ -707,7 +707,7 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
               {sales.length === 0 ? (
                 <p className="text-xs text-slate-400 italic">Belum ada riwayat setoran.</p>
               ) : (
-                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-80 overflow-y-auto no-scrollbar pr-0.5">
                   {sales.map((s) => {
                     const product = products.find((p) => p.id === s.productId);
                     const mitra = mitras.find((m) => m.id === s.mitraId);
