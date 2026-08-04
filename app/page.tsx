@@ -535,6 +535,7 @@ Terima kasih atas kerjasamanya! 🙏`;
       <ModalsContainer
         activeModal={activeModal}
         onClose={() => setActiveModal(null)}
+        onOpenModal={(m) => setActiveModal(m)}
         operatingCapital={operatingCapital}
         purchaseBatches={purchaseBatches}
         products={products}

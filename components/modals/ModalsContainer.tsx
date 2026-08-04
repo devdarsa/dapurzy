@@ -15,6 +15,7 @@ import { Product, Mitra, PurchaseBatch, ProductStock, CapitalLog } from '@/lib/t
 interface ModalsContainerProps {
   activeModal: string | null;
   onClose: () => void;
+  onOpenModal?: (modal: string) => void;
   operatingCapital: number;
   purchaseBatches: PurchaseBatch[];
   products: Product[];
@@ -42,6 +43,7 @@ interface ModalsContainerProps {
 export default function ModalsContainer({
   activeModal,
   onClose,
+  onOpenModal,
   operatingCapital,
   purchaseBatches,
   products,
@@ -71,6 +73,7 @@ export default function ModalsContainer({
         isOpen={activeModal === 'belanja_batch'}
         onClose={onClose}
         operatingCapital={operatingCapital}
+        onOpenCapitalModal={() => onOpenModal && onOpenModal('capital')}
         onSubmit={onBelanjaBatch}
       />
 
@@ -80,6 +83,7 @@ export default function ModalsContainer({
         availableBatches={purchaseBatches.filter((b) => b.status === 'tersedia')}
         products={products}
         initialBatchId={pengolahanInitialBatchId}
+        onOpenBelanjaModal={() => onOpenModal && onOpenModal('belanja_batch')}
         onSubmit={onPengolahan}
       />
 

@@ -13,6 +13,7 @@ interface PengolahanModalProps {
   products: Product[];
   // D2 FIX: Jika diisi, batch ini akan otomatis dipilih di dropdown saat modal dibuka
   initialBatchId?: string;
+  onOpenBelanjaModal?: () => void;
   onSubmit: (data: {
     batchId: string;
     productId: string;
@@ -27,6 +28,7 @@ export default function PengolahanModal({
   availableBatches,
   products,
   initialBatchId,
+  onOpenBelanjaModal,
   onSubmit,
 }: PengolahanModalProps) {
   const [selectedBatchId, setSelectedBatchId] = useState<string>('');
@@ -96,12 +98,24 @@ export default function PengolahanModal({
     <ModalWrapper title="🍳 Modul Pembuatan / Pengolahan Produk" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
         {availableBatches.length === 0 ? (
-          <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-center space-y-2">
-            <AlertCircle className="w-8 h-8 text-amber-600 mx-auto" />
-            <h4 className="font-extrabold text-amber-900 text-sm">Tidak Ada Batch Belanja Tersedia</h4>
-            <p className="text-xs text-amber-700">
+          <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl text-center space-y-3 my-2">
+            <AlertCircle className="w-10 h-10 text-amber-600 mx-auto" />
+            <h4 className="font-extrabold text-amber-900 text-sm sm:text-base">Tidak Ada Batch Belanja Tersedia</h4>
+            <p className="text-xs text-amber-700 leading-relaxed max-w-xs mx-auto">
               Semua Batch Belanja telah terpakai atau belum ada transaksi belanja. Silakan buat <b>Batch Belanja</b> baru terlebih dahulu!
             </p>
+            {onOpenBelanjaModal && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenBelanjaModal();
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-md transition cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 mx-auto mt-2"
+              >
+                <span>🛒 + Buat Batch Belanja Baru Sekarang</span>
+              </button>
+            )}
           </div>
         ) : (
           <>
