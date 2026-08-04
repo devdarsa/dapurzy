@@ -329,28 +329,35 @@ export default function DAPURZYApp() {
   };
 
 
-  // 2. Tarik Batch Belanja → Produksi
-  const handleProduceFromBatch = async (data: { batchId: string; productId: string; producedQty: number; note?: string }) => {
-    const { batchId, productId, producedQty } = data;
+  // 2. Tarik Batch Belanja → Produksi (Multi-Produk Output)
+  const handleProduceFromBatch = async (data: {
+    batchId: string;
+    outputs: Array<{
+      productId: string;
+      allocatedCost: number;
+      producedQty: number;
+      calculatedHpp: number;
+    }>;
+  }) => {
+    const { batchId, outputs } = data;
     const batch = purchaseBatches.find((b) => b.batchId === batchId);
-    const product = products.find((p) => p.id === productId);
 
-    if (!batch || !product) { showToast('Batch belanja atau produk tidak valid!', 'error'); return; }
-    if (producedQty <= 0) { showToast('Jumlah produksi harus lebih besar dari 0!', 'error'); return; }
-    if (batch.status === 'produced') { showToast('Batch ini sudah ditarik ke produksi! Setiap batch hanya bisa ditarik 1 kali.', 'error'); return; }
+    if (!batch) { showToast('Batch belanja tidak ditemukan!', 'error'); return; }
+    if (!outputs || outputs.length === 0) { showToast('Hasil produksi tidak boleh kosong!', 'error'); return; }
+    if (batch.status === 'produced') { showToast('Batch ini sudah ditarik ke produksi!', 'error'); return; }
 
-    const calculatedHpp = calculatePrecisionHpp(batch.totalCost, producedQty);
+    const totalProducedQty = outputs.reduce((sum, o) => sum + o.producedQty, 0);
 
     try {
       const res = await fetch('/api/purchases', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ batchId, productId, producedQty, calculatedHpp }),
+        body: JSON.stringify({ batchId, outputs }),
       });
       const json = await res.json();
       if (!json.success) { showToast(json.error || 'Gagal menyimpan data produksi!', 'error'); return; }
 
-      showToast(`Produksi Selesai! HPP presisi: ${formatRupiah(calculatedHpp)}/pcs (Batch Terkunci)`);
+      showToast(`Produksi Selesai! (${outputs.length} Jenis Produk, Total ${totalProducedQty} Pcs Tercipta)`);
       setActiveModal(null);
       await loadFromD1();
     } catch (e) {

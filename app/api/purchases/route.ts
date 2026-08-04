@@ -90,55 +90,93 @@ export async function POST(request: Request) {
 }
 
 
-// PUT: Update batch to produced status with product, qty, hpp
+// PUT: Update batch to produced status with single or multi-product outputs
 export async function PUT(request: Request) {
   const db = getDB(request);
   if (!db) return NextResponse.json({ success: false, error: 'Database tidak tersedia' }, { status: 503 });
 
   try {
     const body = await request.json();
-    const { batchId, productId, producedQty, calculatedHpp } = body;
+    const { batchId, outputs, productId, producedQty, calculatedHpp } = body;
 
-    if (!batchId || !productId || !producedQty || producedQty <= 0) {
-      return NextResponse.json({ success: false, error: 'Parameter produksi tidak lengkap' }, { status: 400 });
+    if (!batchId) {
+      return NextResponse.json({ success: false, error: 'Batch ID harus diisi' }, { status: 400 });
     }
 
+    const itemsToProcess: Array<{
+      productId: string;
+      allocatedCost: number;
+      producedQty: number;
+      calculatedHpp: number;
+    }> = [];
+
+    if (Array.isArray(outputs) && outputs.length > 0) {
+      outputs.forEach((o: any) => {
+        if (o.productId && o.producedQty > 0) {
+          itemsToProcess.push({
+            productId: o.productId,
+            allocatedCost: o.allocatedCost || 0,
+            producedQty: o.producedQty,
+            calculatedHpp: o.calculatedHpp || 0,
+          });
+        }
+      });
+    } else if (productId && producedQty > 0) {
+      itemsToProcess.push({
+        productId,
+        allocatedCost: body.allocatedCost || 0,
+        producedQty,
+        calculatedHpp: calculatedHpp || 0,
+      });
+    }
+
+    if (itemsToProcess.length === 0) {
+      return NextResponse.json({ success: false, error: 'Tidak ada hasil produksi yang valid' }, { status: 400 });
+    }
+
+    const totalQty = itemsToProcess.reduce((sum, item) => sum + item.producedQty, 0);
+    const avgHpp = itemsToProcess.reduce((sum, item) => sum + item.allocatedCost, 0) / (totalQty || 1);
+
+    // 1. Mark purchase_batch as produced
     await db
       .prepare('UPDATE purchase_batches SET status = ?, product_id = ?, produced_qty = ?, calculated_hpp = ? WHERE batch_id = ?')
-      .bind('produced', productId, producedQty, calculatedHpp, batchId)
+      .bind('produced', itemsToProcess[0].productId, totalQty, Math.round(avgHpp), batchId)
       .run();
 
-    // Update product avg_hpp
-    await db
-      .prepare('UPDATE products SET avg_hpp = ? WHERE id = ?')
-      .bind(calculatedHpp, productId)
-      .run();
-
-    // Add stock to gudang
-    const existingStock = await db
-      .prepare("SELECT * FROM product_stocks WHERE productId = ? AND location_type = 'gudang'")
-      .bind(productId)
-      .first();
-
-    if (existingStock) {
+    // 2. Process each produced product output
+    for (const item of itemsToProcess) {
+      // Update product avg_hpp
       await db
-        .prepare('UPDATE product_stocks SET quantity = quantity + ? WHERE id = ?')
-        .bind(producedQty, existingStock.id)
+        .prepare('UPDATE products SET avg_hpp = ? WHERE id = ?')
+        .bind(item.calculatedHpp, item.productId)
         .run();
-    } else {
-      await db
-        .prepare("INSERT INTO product_stocks (id, productId, location_type, mitra_id, quantity) VALUES (?, ?, 'gudang', null, ?)")
-        .bind(`STK-${Date.now()}`, productId, producedQty)
-        .run();
+
+      // Add stock to gudang
+      const existingStock = await db
+        .prepare("SELECT * FROM product_stocks WHERE productId = ? AND location_type = 'gudang'")
+        .bind(item.productId)
+        .first();
+
+      if (existingStock) {
+        await db
+          .prepare('UPDATE product_stocks SET quantity = quantity + ? WHERE id = ?')
+          .bind(item.producedQty, existingStock.id)
+          .run();
+      } else {
+        await db
+          .prepare("INSERT INTO product_stocks (id, productId, location_type, mitra_id, quantity) VALUES (?, ?, 'gudang', null, ?)")
+          .bind(`STK-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, item.productId, item.producedQty)
+          .run();
+      }
     }
 
     const trxNum = `TRX-PROD-${Date.now().toString().slice(-6)}`;
     await db
       .prepare('INSERT INTO audit_logs (id, action, trx_number, details) VALUES (?, ?, ?, ?)')
-      .bind(`AUD-${Date.now()}`, 'PRODUCTION_COMPLETED', trxNum, `Produksi ${producedQty} pcs dari ${batchId} HPP=${calculatedHpp}`)
+      .bind(`AUD-${Date.now()}`, 'PRODUCTION_COMPLETED', trxNum, `Produksi ${itemsToProcess.length} jenis produk (${totalQty} pcs) dari ${batchId}`)
       .run();
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, count: itemsToProcess.length, totalQty });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
