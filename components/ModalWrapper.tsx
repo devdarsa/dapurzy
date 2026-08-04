@@ -11,8 +11,8 @@ export interface ModalWrapperProps {
 
 export default function ModalWrapper({ title, onClose, children }: ModalWrapperProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-3 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-md sm:max-w-lg rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 space-y-3 shadow-xl max-h-[88vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200 border border-slate-200">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-3 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-x-hidden">
+      <div className="bg-white w-full max-w-md sm:max-w-lg rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 space-y-3 shadow-xl max-h-[88vh] overflow-y-auto no-scrollbar animate-in slide-in-from-bottom sm:zoom-in-95 duration-200 border border-slate-200">
         <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
           <h3 className="font-extrabold text-xs sm:text-sm text-slate-800">{title}</h3>
           <button

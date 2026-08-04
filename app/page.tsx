@@ -523,7 +523,7 @@ Terima kasih banyak atas kerjasamanya! 🙏`;
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-20 sm:pb-24 select-none relative border-x border-slate-200">
+    <div className="min-h-screen bg-slate-100 text-slate-800 font-sans pb-20 sm:pb-24 select-none relative max-w-full overflow-x-hidden no-scrollbar border-x border-slate-200">
       <Toast notification={notification} />
 
       {isLoading && (
