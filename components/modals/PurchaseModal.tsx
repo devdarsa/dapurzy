@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import ModalWrapper from '../ModalWrapper';
 import { formatRupiah, formatNumberWithDots, parseFormattedNumber } from '@/lib/utils';
-import { AlertTriangle, Wallet } from 'lucide-react';
+import { AlertTriangle, Wallet, Calculator } from 'lucide-react';
 
 interface PurchaseModalProps {
   isOpen: boolean;
@@ -20,6 +20,7 @@ export default function PurchaseModal({ isOpen, onClose, cashBalance, onSubmit }
   if (!isOpen) return null;
 
   const rawCost = parseFormattedNumber(totalCostInput);
+  const remainingBalance = cashBalance - rawCost;
   const isInsufficientCash = rawCost > cashBalance || cashBalance <= 0;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -40,11 +41,11 @@ export default function PurchaseModal({ isOpen, onClose, cashBalance, onSubmit }
   return (
     <ModalWrapper title="Tambah Batch Belanja Bahan Baku" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 text-xs sm:text-sm">
-        {/* CASh BALANCE DISPLAY HEADER */}
+        {/* CASH BALANCE DISPLAY HEADER */}
         <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Wallet className="w-4 h-4 text-emerald-600" />
-            <span className="text-xs font-bold text-slate-700">Saldo Kas Operasional:</span>
+            <span className="text-xs font-bold text-slate-700">Saldo Kas Operasional Saat Ini:</span>
           </div>
           <span className={`font-black text-sm ${cashBalance <= 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
             {formatRupiah(cashBalance)}
@@ -55,7 +56,7 @@ export default function PurchaseModal({ isOpen, onClose, cashBalance, onSubmit }
         {cashBalance <= 0 && (
           <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center space-x-2 text-rose-800 text-xs font-bold">
             <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0" />
-            <span>Saldo Kas Operasional Habis! Harap Injeksi Modal terlebih dahulu sebelum berbelanja.</span>
+            <span>Saldo Kas Operasional Habis (Rp 0)! Harap Injeksi Modal terlebih dahulu sebelum berbelanja.</span>
           </div>
         )}
 
@@ -99,13 +100,42 @@ export default function PurchaseModal({ isOpen, onClose, cashBalance, onSubmit }
               }`}
             />
           </div>
-          {rawCost > cashBalance && cashBalance > 0 && (
-            <p className="text-xs text-rose-600 font-bold mt-1 flex items-center gap-1">
-              <AlertTriangle className="w-3.5 h-3.5" /> Nominal belanja ({formatRupiah(rawCost)}) melebihi saldo kas ({formatRupiah(cashBalance)})!
-            </p>
-          )}
           <p className="text-[11px] text-slate-500 mt-1">Otomatis titik setiap 3 digit angka (Ribuan)</p>
         </div>
+
+        {/* REAL-TIME REMAINING CASH BALANCE CALCULATOR CARD */}
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1.5 text-xs">
+          <div className="flex items-center gap-1.5 text-emerald-900 font-extrabold pb-1 border-b border-emerald-200">
+            <Calculator className="w-3.5 h-3.5 text-emerald-700" /> Kalkulasi Sisa Kas Real-Time
+          </div>
+
+          <div className="flex justify-between items-center text-slate-600">
+            <span>1. Saldo Kas Operasional Awal:</span>
+            <span className="font-bold text-slate-800">{formatRupiah(cashBalance)}</span>
+          </div>
+
+          <div className="flex justify-between items-center text-rose-600">
+            <span>2. Total Nominal Belanja:</span>
+            <span className="font-bold">- {formatRupiah(rawCost)}</span>
+          </div>
+
+          <div className="pt-1.5 border-t border-emerald-200/80 flex justify-between items-center">
+            <span className="font-extrabold text-slate-800">Sisa Saldo Kas (Setelah Belanja):</span>
+            <span
+              className={`font-black text-sm sm:text-base ${
+                remainingBalance < 0 ? 'text-rose-600' : 'text-emerald-700'
+              }`}
+            >
+              {formatRupiah(remainingBalance)}
+            </span>
+          </div>
+        </div>
+
+        {rawCost > cashBalance && cashBalance > 0 && (
+          <p className="text-xs text-rose-600 font-bold flex items-center gap-1">
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" /> Nominal belanja ({formatRupiah(rawCost)}) melebihi saldo kas ({formatRupiah(cashBalance)})!
+          </p>
+        )}
 
         <button
           type="submit"
