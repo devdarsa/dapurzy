@@ -473,6 +473,36 @@ export default function DAPURZYApp() {
     }
   };
 
+  const handleShareSaleToWhatsApp = (sale: Sale) => {
+    const mitra = mitras.find((m) => m.id === sale.mitraId);
+    const product = products.find((p) => p.id === sale.productId);
+    const dateStr = formatDate(sale.createdAt);
+
+    const cleanWa = mitra?.whatsapp ? mitra.whatsapp.replace(/[^0-9]/g, '') : '';
+    const msg = `*NOTA REKAP SETORAN - DAPURZY* 🍞
+
+Halo *${mitra?.name || 'Mitra'}*, berikut nota rekap setoran konsinyasi (${dateStr}):
+
+📦 *Produk:* ${product?.name || 'Produk'}
+• Dititipkan: ${sale.titipQty || sale.quantity} pcs
+• Kembali / Basi: ${sale.returnedQty || 0} pcs
+-----------------------------------
+*Total Laku:* ${sale.quantity} pcs
+*Total Setoran Uang:* ${formatRupiah(sale.totalAmount)}
+
+Metode: ${sale.paymentMethod || 'CASH'}
+Terima kasih banyak atas kerjasamanya! 🙏`;
+
+    let waUrl = '';
+    if (cleanWa) {
+      const targetPhone = cleanWa.startsWith('0') ? '62' + cleanWa.slice(1) : cleanWa;
+      waUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`;
+    } else {
+      waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    }
+    window.open(waUrl, '_blank');
+  };
+
   // 9. Factory Reset
   const handleFactoryResetAllData = async () => {
     try {
@@ -680,9 +710,20 @@ export default function DAPURZYApp() {
                             {product?.name || 'Produk'} ({s.quantity} pcs laku) • {formatDate(s.createdAt)}
                           </p>
                         </div>
-                        <div className="text-right">
-                          <p className="font-black text-emerald-800">{formatRupiah(s.totalAmount)}</p>
-                          <p className="text-[10px] text-amber-700 font-bold">Profit: {formatRupiah(s.profit)}</p>
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <p className="font-black text-emerald-800">{formatRupiah(s.totalAmount)}</p>
+                            <p className="text-[10px] text-amber-700 font-bold">Profit: {formatRupiah(s.profit)}</p>
+                          </div>
+                          {s.saleType !== 'DIRECT' && (
+                            <button
+                              onClick={() => handleShareSaleToWhatsApp(s)}
+                              className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-black px-2 py-1 rounded-lg border border-emerald-300 active:scale-95 transition cursor-pointer flex items-center gap-1"
+                              title="Kirim Nota ke WA Mitra"
+                            >
+                              <span>📲 WA</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     );

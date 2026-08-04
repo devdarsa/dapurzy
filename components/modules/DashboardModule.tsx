@@ -230,6 +230,37 @@ export default function DashboardModule({
         </button>
       </div>
 
+      {/* SECONDARY QUICK ACTIONS: MASTER DATA CREATION */}
+      <div className="grid grid-cols-2 gap-2.5">
+        <button
+          onClick={() => onOpenModal('product')}
+          className="p-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 font-extrabold text-xs flex items-center justify-between border border-slate-200 shadow-xs active:scale-95 transition cursor-pointer"
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-black">📦</span>
+            <div className="text-left">
+              <p className="font-black text-slate-800">Master Produk</p>
+              <p className="text-[10px] text-slate-500 font-normal">+ Tambah Produk Baru</p>
+            </div>
+          </div>
+          <span className="text-xs text-emerald-600 font-black">+</span>
+        </button>
+
+        <button
+          onClick={() => onOpenModal('mitra')}
+          className="p-3 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 font-extrabold text-xs flex items-center justify-between border border-slate-200 shadow-xs active:scale-95 transition cursor-pointer"
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-7 h-7 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center font-black">🤝</span>
+            <div className="text-left">
+              <p className="font-black text-slate-800">Master Mitra</p>
+              <p className="text-[10px] text-slate-500 font-normal">+ Tambah Mitra Baru</p>
+            </div>
+          </div>
+          <span className="text-xs text-amber-600 font-black">+</span>
+        </button>
+      </div>
+
       {/* TOP MITRA TERLARIS LEADERBOARD WIDGET */}
       {topMitras.length > 0 && (
         <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">

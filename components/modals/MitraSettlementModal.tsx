@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import ModalWrapper from '../ModalWrapper';
 import { Product, Mitra } from '@/lib/types';
 import { formatRupiah, formatNumberWithDots, parseFormattedNumber } from '@/lib/utils';
-import { Calculator } from 'lucide-react';
+import { Calculator, MessageCircle } from 'lucide-react';
 
 interface MitraSettlementModalProps {
   isOpen: boolean;
@@ -60,6 +60,41 @@ export default function MitraSettlementModal({
   const hppPerUnit = selectedProduct?.avgHpp || 0;
   const recoveredCost = soldQty * hppPerUnit; // Pokok HPP yang dipulihkan ke Kas Modal
   const netProfit = totalOmzet - recoveredCost;
+
+  const handleSendWhatsAppReport = () => {
+    if (!selectedMitra || !selectedProduct) return;
+    const cleanWa = selectedMitra.whatsapp ? selectedMitra.whatsapp.replace(/[^0-9]/g, '') : '';
+    const dateStr = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+
+    const msg = `*REKAP SETORAN CONSIGNMENT - DAPURZY* 🍞
+
+Halo *${selectedMitra.name}*, berikut rincian setoran konsinyasi per tanggal ${dateStr}:
+
+📦 *Produk:* ${selectedProduct.name}
+• Dititipkan: ${titipQty} pcs
+• Kembali / Basi: ${returnedQty} pcs
+-----------------------------------
+*Total Laku:* ${soldQty} pcs
+*Harga Satuan:* ${formatRupiah(effectivePrice)}
+*TOTAL TAGIHAN / SETORAN: ${formatRupiah(totalOmzet)}*
+
+Metode: ${paymentMethod}
+Terima kasih banyak atas kerjasamanya! 🙏`;
+
+    let waUrl = '';
+    if (cleanWa) {
+      const targetPhone = cleanWa.startsWith('0') ? '62' + cleanWa.slice(1) : cleanWa;
+      waUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`;
+    } else {
+      waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+    }
+
+    window.open(waUrl, '_blank');
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,14 +224,25 @@ export default function MitraSettlementModal({
           </select>
         </div>
 
-        <button
-          type="submit"
-          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg mt-2 active:scale-95 transition cursor-pointer text-sm"
-        >
-          ✅ Simpan Rekap Setoran {formatRupiah(totalOmzet)}
-        </button>
+        <div className="flex gap-2 pt-1">
+          <button
+            type="button"
+            onClick={handleSendWhatsAppReport}
+            className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold py-3.5 rounded-xl shadow-md active:scale-95 transition cursor-pointer text-xs flex items-center justify-center gap-1.5"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span>📲 Kirim WA</span>
+          </button>
+          <button
+            type="submit"
+            className="flex-[2] bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg active:scale-95 transition cursor-pointer text-xs sm:text-sm"
+          >
+            ✅ Simpan {formatRupiah(totalOmzet)}
+          </button>
+        </div>
       </form>
     </ModalWrapper>
   );
 }
+
 
