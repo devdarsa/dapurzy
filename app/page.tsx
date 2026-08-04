@@ -2,29 +2,19 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 
-// Core UI Components
+// Core UI Components & Modals Container
 import Navbar from '@/components/Navbar';
 import BottomNav from '@/components/BottomNav';
 import DrawerMenu from '@/components/DrawerMenu';
 import Toast from '@/components/Toast';
 import PinLockScreen from '@/components/PinLockScreen';
+import ModalsContainer from '@/components/modals/ModalsContainer';
 
 // Modules
 import DashboardModule from '@/components/modules/DashboardModule';
 import MasterModule from '@/components/modules/MasterModule';
 import RevenueHistoryModule from '@/components/modules/RevenueHistoryModule';
 import MitraModule from '@/components/modules/MitraModule';
-
-// Form Modals
-import BelanjaBatchModal from '@/components/modals/BelanjaBatchModal';
-import PengolahanModal from '@/components/modals/PengolahanModal';
-import AmbilMitraModal from '@/components/modals/AmbilMitraModal';
-import MitraSettlementModal from '@/components/modals/MitraSettlementModal';
-import HomeSalesModal from '@/components/modals/HomeSalesModal';
-import CapitalModal from '@/components/modals/CapitalModal';
-import ProductModal from '@/components/modals/ProductModal';
-import MitraModal from '@/components/modals/MitraModal';
-import ResetDataModal from '@/components/modals/ResetDataModal';
 
 // Types & Utilities
 import { Product, Mitra, PurchaseBatch, Sale, ProductStock, CapitalLog } from '@/lib/types';
@@ -80,18 +70,7 @@ export default function DAPURZYApp() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [activeModal, setActiveModal] = useState<
-    | 'belanja_batch'
-    | 'pengolahan'
-    | 'ambil_mitra'
-    | 'settlement'
-    | 'home_sales'
-    | 'capital'
-    | 'product'
-    | 'mitra'
-    | 'reset'
-    | null
-  >(null);
+  const [activeModal, setActiveModal] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingMitra, setEditingMitra] = useState<Mitra | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -182,14 +161,7 @@ export default function DAPURZYApp() {
     const id = `PB-${Date.now()}`;
 
     try {
-      const json = await api.postBelanjaBatch({
-        id,
-        batchId,
-        itemsDescription,
-        totalCost,
-        date,
-        supplier: 'Supplier Umum',
-      });
+      const json = await api.postBelanjaBatch({ id, batchId, itemsDescription, totalCost, date, supplier: 'Supplier Umum' });
       if (!json.success) { showToast(json.error || 'Gagal menyimpan batch belanja!', 'error'); return; }
 
       showToast(`Batch Belanja ${batchId} berhasil disimpan! (${formatRupiah(totalCost)} memotong Kas Modal)`);
@@ -406,14 +378,7 @@ export default function DAPURZYApp() {
     const id = data.id || `M-${Date.now()}`;
 
     try {
-      const json = await api.postMitra({
-        id,
-        name: data.name,
-        type: data.type,
-        whatsapp: data.whatsapp,
-        address: data.address,
-        customPrices: data.customPrices,
-      });
+      const json = await api.postMitra({ id, name: data.name, type: data.type, whatsapp: data.whatsapp, address: data.address, customPrices: data.customPrices });
       if (!json.success) { showToast(json.error || 'Gagal menyimpan mitra!', 'error'); return; }
 
       showToast(`Mitra ${data.name} berhasil disimpan!`);
@@ -579,75 +544,32 @@ Terima kasih atas kerjasamanya! 🙏`;
       {/* BOTTOM NAVIGATION BAR */}
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* FORM MODAL DIALOGS */}
-      <BelanjaBatchModal
-        isOpen={activeModal === 'belanja_batch'}
+      {/* FORM MODAL DIALOGS CONTAINER */}
+      <ModalsContainer
+        activeModal={activeModal}
         onClose={() => setActiveModal(null)}
         operatingCapital={operatingCapital}
-        onSubmit={handleBelanjaBatch}
-      />
-
-      <PengolahanModal
-        isOpen={activeModal === 'pengolahan'}
-        onClose={() => { setActiveModal(null); setPengolahanInitialBatchId(''); }}
-        availableBatches={purchaseBatches.filter((b) => b.status === 'tersedia')}
+        purchaseBatches={purchaseBatches}
         products={products}
-        initialBatchId={pengolahanInitialBatchId}
-        onSubmit={handlePengolahan}
-      />
-
-      <AmbilMitraModal
-        isOpen={activeModal === 'ambil_mitra'}
-        onClose={() => setActiveModal(null)}
         mitras={mitras}
-        products={products}
         stocks={stocks}
-        onSubmit={handleAmbilMitra}
-      />
-
-      <MitraSettlementModal
-        isOpen={activeModal === 'settlement'}
-        onClose={() => setActiveModal(null)}
-        products={products}
-        mitras={mitras}
-        onSubmit={handleMitraSettlement}
-      />
-
-      <HomeSalesModal
-        isOpen={activeModal === 'home_sales'}
-        onClose={() => setActiveModal(null)}
-        onSubmit={handleHomeSalesDeposit}
-      />
-
-      <CapitalModal
-        isOpen={activeModal === 'capital'}
-        onClose={() => setActiveModal(null)}
-        operatingCapital={operatingCapital}
         capitalLogs={capitalLogs}
-        onSubmit={handleCapital}
-        onDeleteLog={handleDeleteCapitalLog}
-      />
-
-      <ProductModal
-        isOpen={activeModal === 'product'}
-        onClose={() => { setActiveModal(null); setEditingProduct(null); }}
-        products={products}
-        initialData={editingProduct}
-        onSubmit={handleCreateOrUpdateProduct}
-      />
-
-      <MitraModal
-        isOpen={activeModal === 'mitra'}
-        onClose={() => { setActiveModal(null); setEditingMitra(null); }}
-        initialData={editingMitra}
-        products={products}
-        onSubmit={handleCreateOrUpdateMitra}
-      />
-
-      <ResetDataModal
-        isOpen={activeModal === 'reset'}
-        onClose={() => setActiveModal(null)}
-        onConfirmReset={handleFactoryResetAllData}
+        editingProduct={editingProduct}
+        editingMitra={editingMitra}
+        pengolahanInitialBatchId={pengolahanInitialBatchId}
+        setEditingProduct={setEditingProduct}
+        setEditingMitra={setEditingMitra}
+        setPengolahanInitialBatchId={setPengolahanInitialBatchId}
+        onBelanjaBatch={handleBelanjaBatch}
+        onPengolahan={handlePengolahan}
+        onAmbilMitra={handleAmbilMitra}
+        onMitraSettlement={handleMitraSettlement}
+        onHomeSalesDeposit={handleHomeSalesDeposit}
+        onCapital={handleCapital}
+        onDeleteCapitalLog={handleDeleteCapitalLog}
+        onCreateOrUpdateProduct={handleCreateOrUpdateProduct}
+        onCreateOrUpdateMitra={handleCreateOrUpdateMitra}
+        onFactoryReset={handleFactoryResetAllData}
       />
     </div>
   );
