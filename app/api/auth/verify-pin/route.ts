@@ -2,7 +2,14 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
+function getDB(request: Request): any {
+  return (request as any).cf?.env?.DB ?? (globalThis as any).__D1_DB ?? null;
+}
+
 export async function POST(request: Request) {
+  const db = getDB(request);
+  if (!db) return NextResponse.json({ valid: false, error: 'Database tidak tersedia' }, { status: 503 });
+
   try {
     const body = await request.json();
     const pin = body.pin;
@@ -11,34 +18,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ valid: false, error: 'PIN tidak valid' }, { status: 400 });
     }
 
-    const env = (process as any).env || {};
-    const db = env.DB;
+    const userRes = await db
+      .prepare('SELECT id, username FROM users WHERE pin = ? LIMIT 1')
+      .bind(pin)
+      .first();
 
-    if (db) {
-      try {
-        const userRes = await db
-          .prepare('SELECT * FROM users WHERE pin = ? LIMIT 1')
-          .bind(pin)
-          .first();
-
-        if (userRes) {
-          return NextResponse.json({
-            valid: true,
-            user: { id: userRes.id, username: userRes.username },
-          });
-        }
-      } catch (dbErr) {
-        console.log('D1 auth error:', dbErr);
-      }
+    if (userRes) {
+      return NextResponse.json({ valid: true, user: { id: userRes.id, username: userRes.username } });
     }
 
-    // Database seed fallback
-    const isValid = pin === '250423';
-    return NextResponse.json({
-      valid: isValid,
-      user: isValid ? { id: 'USR-001', username: 'develzy' } : null,
-    });
-  } catch (error) {
-    return NextResponse.json({ valid: false, error: 'Error verifikasi PIN' }, { status: 500 });
+    return NextResponse.json({ valid: false });
+  } catch (error: any) {
+    return NextResponse.json({ valid: false, error: error.message }, { status: 500 });
   }
 }

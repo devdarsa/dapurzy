@@ -2,74 +2,58 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'edge';
 
-// GET: Fetch account data from Cloudflare D1 for multi-device synchronization
+// Helper to get D1 binding from Cloudflare Worker env
+function getDB(request: Request): any {
+  return (request as any).cf?.env?.DB ?? (globalThis as any).__D1_DB ?? null;
+}
+
+// GET: Load all app data from D1
 export async function GET(request: Request) {
+  const db = getDB(request);
+  if (!db) {
+    return NextResponse.json({ success: false, error: 'Database tidak tersedia' }, { status: 503 });
+  }
+
   try {
-    // If D1 binding is available in Cloudflare context (env.DB)
-    const env = (process as any).env || {};
-    const db = env.DB;
+    const [products, mitras, batches, stocks, sales, capitalLogs, movements, auditLogs, cashRow] = await Promise.all([
+      db.prepare('SELECT * FROM products ORDER BY created_at ASC').all(),
+      db.prepare('SELECT * FROM mitras ORDER BY created_at ASC').all(),
+      db.prepare('SELECT * FROM purchase_batches ORDER BY created_at DESC').all(),
+      db.prepare('SELECT * FROM product_stocks').all(),
+      db.prepare('SELECT * FROM sales ORDER BY created_at DESC').all(),
+      db.prepare('SELECT * FROM capital_logs ORDER BY created_at DESC').all(),
+      db.prepare('SELECT * FROM stock_movements ORDER BY created_at DESC').all(),
+      db.prepare('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 100').all(),
+      db.prepare('SELECT * FROM capital_logs ORDER BY created_at DESC LIMIT 1').first(),
+    ]);
 
-    if (db) {
-      try {
-        const productsRes = await db.prepare('SELECT * FROM products').all();
-        const mitrasRes = await db.prepare('SELECT * FROM mitras').all();
-        const batchesRes = await db.prepare('SELECT * FROM purchase_batches').all();
-        const stocksRes = await db.prepare('SELECT * FROM product_stocks').all();
-        const salesRes = await db.prepare('SELECT * FROM sales').all();
-        const capitalRes = await db.prepare('SELECT * FROM capital_logs').all();
-        const auditRes = await db.prepare('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 50').all();
-
-        return NextResponse.json({
-          success: true,
-          source: 'Cloudflare_D1_Remote',
-          data: {
-            products: productsRes.results || [],
-            mitras: mitrasRes.results || [],
-            purchaseBatches: batchesRes.results || [],
-            stocks: stocksRes.results || [],
-            sales: salesRes.results || [],
-            capitalLogs: capitalRes.results || [],
-            auditLogs: auditRes.results || [],
-          },
-        });
-      } catch (dbErr) {
-        console.log('D1 query fallback:', dbErr);
-      }
-    }
+    // Calculate total cash balance from capital logs + sales - purchases
+    const totalCapital = (capitalLogs.results || []).reduce((s: number, r: any) => s + (r.amount || 0), 0);
+    const totalSales = (sales.results || []).reduce((s: number, r: any) => s + (r.total_amount || 0), 0);
+    const totalBatchCost = (batches.results || []).reduce((s: number, r: any) => s + (r.total_cost || 0), 0);
+    const cashBalance = totalCapital + totalSales - totalBatchCost;
 
     return NextResponse.json({
       success: true,
-      source: 'Cloudflare_D1_Standby',
-      data: null,
+      source: 'D1_Remote',
+      data: {
+        cashBalance,
+        activeCapital: totalCapital,
+        products: products.results || [],
+        mitras: mitras.results || [],
+        purchaseBatches: batches.results || [],
+        stocks: stocks.results || [],
+        sales: sales.results || [],
+        capitalLogs: capitalLogs.results || [],
+        movements: movements.results || [],
+        auditLogs: auditLogs.results || [],
+      },
     });
-  } catch (error) {
-    return NextResponse.json(
-      { success: false, error: 'Gagal melakukan sinkronisasi D1 Multi-Device' },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
-// POST: Save/Sync state from any device to Cloudflare D1 Remote Database
 export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const env = (process as any).env || {};
-    const db = env.DB;
-
-    if (db && body) {
-      // Upsert/Sync data payload if needed
-    }
-
-    return NextResponse.json({
-      success: true,
-      timestamp: new Date().toISOString(),
-      message: 'Data berhasil disinkronisasi ke Cloudflare D1 Remote!',
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { success: false, error: 'Gagal menyimpan sinkronisasi ke D1 Remote' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({ success: true });
 }
