@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import ModalWrapper from '../ModalWrapper';
+import EmptyPrerequisiteState from './EmptyPrerequisiteState';
 import { formatNumberWithDots, parseFormattedNumber, formatRupiah } from '@/lib/utils';
 import { Home, AlertCircle, PlusCircle } from 'lucide-react';
 import { Product } from '@/lib/types';
@@ -44,31 +45,16 @@ export default function HomeSalesModal({
   return (
     <ModalWrapper title="🏡 Setor Uang Hasil Jual di Rumah (1-Tap)" onClose={onClose}>
       {products.length === 0 ? (
-        /* POPUP BOUNCY ELEGAN JIKA BELUM ADA PRODUK */
-        <div className="bg-gradient-to-br from-purple-500/10 via-purple-400/5 to-purple-500/20 border-2 border-purple-400/60 p-6 rounded-3xl text-center space-y-3.5 my-3 shadow-xl animate-in zoom-in-95 duration-300 relative overflow-hidden backdrop-blur-xs">
-          <div className="w-14 h-14 bg-gradient-to-tr from-purple-600 to-purple-500 text-white rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-purple-500/30 animate-bounce">
-            <AlertCircle className="w-8 h-8 stroke-[2.5]" />
-          </div>
-          <div>
-            <h4 className="font-black text-purple-950 text-base sm:text-lg tracking-tight">Belum Ada Master Produk!</h4>
-            <p className="text-xs font-semibold text-purple-900/80 mt-1 max-w-xs mx-auto leading-relaxed">
-              Belum ada produk yang didaftarkan. Daftarkan Produk pertama Anda untuk mulai setor hasil jual di rumah!
-            </p>
-          </div>
-          {onOpenProductModal && (
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onOpenProductModal();
-              }}
-              className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-black text-xs sm:text-sm px-6 py-3.5 rounded-2xl shadow-lg shadow-purple-500/30 active:scale-95 transition transform cursor-pointer flex items-center justify-center gap-2 mx-auto mt-2"
-            >
-              <PlusCircle className="w-4 h-4 stroke-[3]" />
-              <span>+ Tambah Master Produk Sekarang</span>
-            </button>
-          )}
-        </div>
+        <EmptyPrerequisiteState
+          title="Belum Ada Master Produk!"
+          description="Belum ada produk yang didaftarkan. Daftarkan Produk pertama Anda untuk mulai setor hasil jual di rumah!"
+          buttonText="+ Tambah Master Produk Sekarang"
+          onButtonClick={() => {
+            onClose();
+            if (onOpenProductModal) onOpenProductModal();
+          }}
+          colorScheme="purple"
+        />
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
           <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 space-y-2">

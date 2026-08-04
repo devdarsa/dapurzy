@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import ModalWrapper from '../ModalWrapper';
+import EmptyPrerequisiteState from './EmptyPrerequisiteState';
 import NumericCalculatorKeypad from '../NumericCalculatorKeypad';
 import { formatNumberWithDots, parseFormattedNumber, formatRupiah } from '@/lib/utils';
 import { Calculator, Calendar, ShoppingBag, AlertCircle, PlusCircle } from 'lucide-react';
@@ -66,31 +67,16 @@ export default function BelanjaBatchModal({
     <>
       <ModalWrapper title="🛒 Modul Belanja (Buat Batch Belanja)" onClose={onClose}>
         {operatingCapital <= 0 ? (
-          /* POPUP BOUNCY ELEGAN JIKA BELUM ADA KAS MODAL */
-          <div className="bg-gradient-to-br from-amber-500/10 via-amber-400/5 to-amber-500/20 border-2 border-amber-400/60 p-6 rounded-3xl text-center space-y-3.5 my-3 shadow-xl animate-in zoom-in-95 duration-300 relative overflow-hidden backdrop-blur-xs">
-            <div className="w-14 h-14 bg-gradient-to-tr from-amber-500 to-amber-400 text-amber-950 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-amber-500/30 animate-bounce">
-              <AlertCircle className="w-8 h-8 stroke-[2.5]" />
-            </div>
-            <div>
-              <h4 className="font-black text-amber-950 text-base sm:text-lg tracking-tight">Saldo Kas Modal Usaha Kosong (Rp 0)!</h4>
-              <p className="text-xs font-semibold text-amber-900/80 mt-1 max-w-xs mx-auto leading-relaxed">
-                Belum ada saldo Kas Modal untuk belanja. Silakan lakukan <b>Injeksi Modal Usaha</b> terlebih dahulu sebelum membuat Batch Belanja!
-              </p>
-            </div>
-            {onOpenCapitalModal && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenCapitalModal();
-                }}
-                className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black text-xs sm:text-sm px-6 py-3.5 rounded-2xl shadow-lg shadow-emerald-600/30 active:scale-95 transition transform cursor-pointer flex items-center justify-center gap-2 mx-auto mt-2"
-              >
-                <PlusCircle className="w-4 h-4 stroke-[3]" />
-                <span>+ Injeksi Kas Modal Sekarang</span>
-              </button>
-            )}
-          </div>
+          <EmptyPrerequisiteState
+            title="Saldo Kas Modal Usaha Kosong (Rp 0)!"
+            description="Belum ada saldo Kas Modal untuk belanja. Silakan lakukan Injeksi Modal Usaha terlebih dahulu sebelum membuat Batch Belanja!"
+            buttonText="+ Injeksi Kas Modal Sekarang"
+            onButtonClick={() => {
+              onClose();
+              if (onOpenCapitalModal) onOpenCapitalModal();
+            }}
+            colorScheme="amber"
+          />
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
             {/* Banner Status Kas Modal */}
