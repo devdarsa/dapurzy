@@ -3,7 +3,17 @@ import { NextResponse } from 'next/server';
 export const runtime = 'edge';
 
 function getDB(request: Request): any {
-  return (request as any).cf?.env?.DB ?? (globalThis as any).__D1_DB ?? null;
+  const env = (process as any).env || {};
+  const reqEnv = (request as any).env || (request as any).cf?.env || {};
+  const globEnv = (globalThis as any).env || (globalThis as any) || {};
+
+  return (
+    env.DB ||
+    reqEnv.DB ||
+    globEnv.DB ||
+    (globalThis as any).__D1_DB ||
+    null
+  );
 }
 
 // POST: Record a stock movement in D1
