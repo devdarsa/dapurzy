@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import ModalWrapper from '../ModalWrapper';
 import { Product, Mitra, ProductStock } from '@/lib/types';
-import { formatRupiah } from '@/lib/utils';
-import { RefreshCw, Calculator, ArrowDownLeft, ShoppingBag } from 'lucide-react';
+import { formatRupiah, formatNumberWithDots, parseFormattedNumber } from '@/lib/utils';
+import { RefreshCw, Calculator } from 'lucide-react';
 
 interface MitraSettlementModalProps {
   isOpen: boolean;
@@ -30,7 +30,7 @@ export default function MitraSettlementModal({
 }: MitraSettlementModalProps) {
   const [selectedMitraId, setSelectedMitraId] = useState<string>(mitras[0]?.id || '');
   const [selectedProductId, setSelectedProductId] = useState<string>(products[0]?.id || '');
-  const [returnedQtyInput, setReturnedQtyInput] = useState<number>(0);
+  const [returnedQtyInput, setReturnedQtyInput] = useState<string>('0');
   const [paymentMethod, setPaymentMethod] = useState<string>('CASH');
 
   if (!isOpen) return null;
@@ -43,29 +43,35 @@ export default function MitraSettlementModal({
   const currentMitraQty = mitraStockItem ? mitraStockItem.quantity : 0;
 
   // Real-time calculation: Sold Qty = Initial Stock - Returned Qty
-  const returnedQty = Math.min(Math.max(0, returnedQtyInput), currentMitraQty);
+  const rawReturnedQty = parseFormattedNumber(returnedQtyInput);
+  const returnedQty = Math.min(Math.max(0, rawReturnedQty), currentMitraQty);
   const soldQty = Math.max(0, currentMitraQty - returnedQty);
 
   const totalOmzet = soldQty * (selectedProduct?.price || 0);
   const totalHpp = soldQty * (selectedProduct?.avgHpp || 0);
   const netProfit = totalOmzet - totalHpp;
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit({
+      mitraId: selectedMitraId,
+      productId: selectedProductId,
+      returnedQty: Number(returnedQty),
+      paymentMethod,
+    });
+    setReturnedQtyInput('0');
+  };
+
+  const handleReturnedQtyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatNumberWithDots(e.target.value);
+    setReturnedQtyInput(formatted);
+  };
+
   return (
     <ModalWrapper title="Laporan Laku & Retur Mitra (Settlement 1-Tap)" onClose={onClose}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSubmit({
-            mitraId: selectedMitraId,
-            productId: selectedProductId,
-            returnedQty: Number(returnedQty),
-            paymentMethod,
-          });
-        }}
-        className="space-y-3 sm:space-y-4 text-xs sm:text-sm"
-      >
+      <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 text-xs sm:text-sm">
         <div>
-          <label className="block font-bold text-slate-600 mb-1">1. Pilih Mitra Titipan</label>
+          <label className="block font-bold text-slate-700 mb-1">1. Pilih Mitra Titipan</label>
           <select
             value={selectedMitraId}
             onChange={(e) => setSelectedMitraId(e.target.value)}
@@ -81,7 +87,7 @@ export default function MitraSettlementModal({
         </div>
 
         <div>
-          <label className="block font-bold text-slate-600 mb-1">2. Pilih Produk Konsinyasi</label>
+          <label className="block font-bold text-slate-700 mb-1">2. Pilih Produk Konsinyasi</label>
           <select
             value={selectedProductId}
             onChange={(e) => setSelectedProductId(e.target.value)}
@@ -90,7 +96,7 @@ export default function MitraSettlementModal({
           >
             {products.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} - Harga: {formatRupiah(p.price)}
+                {p.name} — Harga: {formatRupiah(p.price)}
               </option>
             ))}
           </select>
@@ -99,30 +105,29 @@ export default function MitraSettlementModal({
         {/* Info Stok Aktual di Mitra */}
         <div className="p-3 sm:p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between">
           <div>
-            <span className="text-[10px] sm:text-xs text-amber-800 font-bold uppercase tracking-wider block">
+            <span className="text-xs text-amber-800 font-bold uppercase tracking-wider block">
               Stok Dititipkan Saat Ini
             </span>
-            <span className="text-xl sm:text-2xl font-black text-amber-950">{currentMitraQty} pcs</span>
+            <span className="text-xl sm:text-2xl font-black text-amber-950">{formatNumberWithDots(currentMitraQty)} pcs</span>
           </div>
           <RefreshCw className="w-6 h-6 text-amber-600" />
         </div>
 
         {/* Input Jumlah Barang Dikembalikan (Retur ke Gudang) */}
         <div>
-          <label className="block font-bold text-slate-600 mb-1">
+          <label className="block font-bold text-slate-700 mb-1">
             3. Jumlah Barang Dikembalikan ke Gudang (Pcs)
           </label>
           <input
-            type="number"
-            min="0"
-            max={currentMitraQty}
+            type="text"
             value={returnedQtyInput}
-            onChange={(e) => setReturnedQtyInput(Number(e.target.value))}
+            onChange={handleReturnedQtyChange}
             required
+            placeholder="0"
             className="w-full p-2.5 sm:p-3 rounded-xl border border-slate-300 font-black text-base text-rose-600 focus:ring-2 focus:ring-rose-500 outline-none"
           />
-          <p className="text-[10px] sm:text-xs text-slate-400 mt-1">
-            Sisa barang yang dibawa pulang owner kembali ke Gudang Utama.
+          <p className="text-xs text-slate-500 mt-1">
+            Otomatis titik pemisah ribuan saat mengetik. Sisa barang kembali ke Gudang Utama.
           </p>
         </div>
 
@@ -135,11 +140,11 @@ export default function MitraSettlementModal({
           <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
             <div className="bg-white p-2.5 rounded-xl border border-emerald-100">
               <span className="text-[10px] text-slate-500 block font-semibold">1. Laku Terjual:</span>
-              <span className="font-black text-emerald-700 text-sm sm:text-base">{soldQty} pcs</span>
+              <span className="font-black text-emerald-700 text-sm sm:text-base">{formatNumberWithDots(soldQty)} pcs</span>
             </div>
             <div className="bg-white p-2.5 rounded-xl border border-emerald-100">
               <span className="text-[10px] text-slate-500 block font-semibold">2. Sisa Retur Gudang:</span>
-              <span className="font-black text-blue-700 text-sm sm:text-base">{returnedQty} pcs</span>
+              <span className="font-black text-blue-700 text-sm sm:text-base">{formatNumberWithDots(returnedQty)} pcs</span>
             </div>
           </div>
 
@@ -156,7 +161,7 @@ export default function MitraSettlementModal({
         </div>
 
         <div>
-          <label className="block font-bold text-slate-600 mb-1">4. Metode Pembayaran</label>
+          <label className="block font-bold text-slate-700 mb-1">4. Metode Pembayaran</label>
           <select
             value={paymentMethod}
             onChange={(e) => setPaymentMethod(e.target.value)}
@@ -172,7 +177,7 @@ export default function MitraSettlementModal({
           disabled={currentMitraQty <= 0}
           className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-extrabold py-3.5 rounded-xl shadow-md mt-2 active:scale-95 transition cursor-pointer"
         >
-          Proses Laku {soldQty} pcs & Retur {returnedQty} pcs
+          Proses Laku {formatNumberWithDots(soldQty)} pcs & Retur {formatNumberWithDots(returnedQty)} pcs
         </button>
       </form>
     </ModalWrapper>
