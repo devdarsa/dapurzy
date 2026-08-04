@@ -16,7 +16,7 @@ CREATE TABLE `users` (
 	`id` text PRIMARY KEY NOT NULL,
 	`username` text NOT NULL,
 	`password_hash` text NOT NULL,
-	`pin` text DEFAULT '250420' NOT NULL,
+	`pin` text DEFAULT '090301' NOT NULL,
 	`created_at` text DEFAULT CURRENT_TIMESTAMP
 );
 CREATE UNIQUE INDEX `users_username_unique` ON `users` (`username`);
@@ -131,5 +131,5 @@ CREATE TABLE `audit_logs` (
 );
 
 -- INITIAL SEED DATA
-INSERT INTO users (id, username, password_hash, pin) VALUES ('usr-owner', 'owner', 'hash-default', '250420');
+INSERT INTO users (id, username, password_hash, pin) VALUES ('usr-owner', 'owner', 'hash-default', '090301');
 INSERT INTO audit_logs (id, action, trx_number, details) VALUES ('AUD-INIT-001', 'FULL_RESET_AND_SCHEMA_UPDATE', 'SYS-INIT', 'Database D1 di-reset dan diperbarui ke skema terbaru Ultra-Lean');
