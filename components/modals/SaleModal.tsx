@@ -20,29 +20,30 @@ interface SaleModalProps {
 }
 
 export default function SaleModal({ isOpen, onClose, products, mitras, onSubmit }: SaleModalProps) {
-  const [selectedProductId, setSelectedProductId] = useState<string>(products[0]?.id || '');
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [locationType, setLocationType] = useState<'gudang' | 'mitra'>('gudang');
-  const [mitraId, setMitraId] = useState<string>(mitras[0]?.id || '');
-  const [qtyInput, setQtyInput] = useState<string>('1');
+  const [mitraId, setMitraId] = useState<string>('');
+  const [qtyInput, setQtyInput] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<string>('CASH');
 
   if (!isOpen) return null;
 
   const currentProduct = products.find((p) => p.id === (selectedProductId || products[0]?.id));
-  const rawQty = parseFormattedNumber(qtyInput) || 1;
+  const rawQty = parseFormattedNumber(qtyInput) || 0;
   const totalOmzet = currentProduct ? rawQty * currentProduct.price : 0;
   const totalProfit = currentProduct ? rawQty * (currentProduct.price - currentProduct.avgHpp) : 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (rawQty <= 0) return;
     onSubmit({
       productId: selectedProductId || products[0]?.id || '',
       quantity: rawQty,
       locationType,
-      mitraId: locationType === 'mitra' ? mitraId : null,
+      mitraId: locationType === 'mitra' ? (mitraId || mitras[0]?.id || null) : null,
       paymentMethod,
     });
-    setQtyInput('1');
+    setQtyInput('');
   };
 
   const handleQtyChange = (e: React.ChangeEvent<HTMLInputElement>) => {

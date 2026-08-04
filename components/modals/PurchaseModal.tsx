@@ -30,23 +30,9 @@ interface PurchaseModalProps {
   onSubmit: (data: { itemsDescription: string; totalCost: number; supplier: string; items: PurchaseItem[] }) => void;
 }
 
-// Preset common raw materials shown when DB has no history yet
-const PRESET_RAW_MATERIALS: RawMaterialHistoryItem[] = [
-  { name: 'Tepung Terigu', unit: 'kg', lastPrice: 12000 },
-  { name: 'Gula Pasir', unit: 'kg', lastPrice: 16000 },
-  { name: 'Susu Kental Manis', unit: 'kaleng', lastPrice: 12500 },
-  { name: 'Minyak Goreng', unit: 'liter', lastPrice: 18000 },
-  { name: 'Cokelat Bubuk', unit: 'kg', lastPrice: 45000 },
-  { name: 'Telur Ayam', unit: 'kg', lastPrice: 28000 },
-  { name: 'Margarin', unit: 'kg', lastPrice: 25000 },
-  { name: 'Plastik Kemasan', unit: 'pax', lastPrice: 10000 },
-  { name: 'Garam', unit: 'bungkus', lastPrice: 3000 },
-  { name: 'Baking Powder', unit: 'gram', lastPrice: 5000 },
-  { name: 'Vanili', unit: 'gram', lastPrice: 4000 },
-  { name: 'Soda Kue', unit: 'gram', lastPrice: 3500 },
-];
 
 const COMMON_UNITS = ['kg', 'gram', 'pcs', 'liter', 'kaleng', 'bungkus', 'pax', 'botol', 'dus', 'roll', 'lusin', 'set'];
+
 
 export default function PurchaseModal({ isOpen, onClose, cashBalance, onSubmit }: PurchaseModalProps) {
   // ─── ALL HOOKS MUST BE BEFORE ANY CONDITIONAL RETURN ───────────────────────
@@ -55,7 +41,7 @@ export default function PurchaseModal({ isOpen, onClose, cashBalance, onSubmit }
     { id: '1', name: '', qty: 1, unit: 'kg', pricePerUnit: 0, total: 0 },
   ]);
   const [activeItemFocus, setActiveItemFocus] = useState<number | null>(null);
-  const [rawMaterialHistory, setRawMaterialHistory] = useState<RawMaterialHistoryItem[]>(PRESET_RAW_MATERIALS);
+  const [rawMaterialHistory, setRawMaterialHistory] = useState<RawMaterialHistoryItem[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const suggestionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -89,13 +75,10 @@ export default function PurchaseModal({ isOpen, onClose, cashBalance, onSubmit }
             lastPrice: r.last_price ?? 0,
             buyCount: r.buy_count ?? 1,
           }));
-          // Merge: DB items first (with accurate prices), then presets that aren't in DB
-          const dbNames = new Set(dbItems.map((d) => d.name.toLowerCase()));
-          const merged = [
-            ...dbItems,
-            ...PRESET_RAW_MATERIALS.filter((p) => !dbNames.has(p.name.toLowerCase())),
-          ];
-          setRawMaterialHistory(merged);
+          setRawMaterialHistory(dbItems);
+        } else {
+          // No history yet in DB — show empty, user will build history organically
+          setRawMaterialHistory([]);
         }
       })
       .catch((e) => console.log('Failed to load raw material history:', e))

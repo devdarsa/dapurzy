@@ -31,7 +31,7 @@ import ResetDataModal from '@/components/modals/ResetDataModal';
 // Import Types, Helpers & Notification Engine
 import { Product, Mitra, PurchaseBatch, ProductStock, AuditLog } from '@/lib/types';
 import { formatRupiah, calculatePrecisionHpp, calculateTransactionProfit } from '@/lib/utils';
-import { registerServiceWorkerAndRequestPermission, sendLowStockNotification, getRecommendedIngredients } from '@/lib/notification';
+import { registerServiceWorkerAndRequestPermission, sendLowStockNotification } from '@/lib/notification';
 
 // ── Helper: map snake_case DB rows → camelCase app types ──────────────────────
 function mapProduct(r: any): Product {
@@ -247,8 +247,7 @@ export default function DAPURZYApp() {
       products.forEach((p) => {
         const summary = getProductStockSummary(p.id);
         if (summary.total <= 10) {
-          const recipe = getRecommendedIngredients(p.category, p.name);
-          sendLowStockNotification(p.name, summary.total, recipe);
+          sendLowStockNotification(p.name, summary.total, `Segera tambah stok ${p.name}!`);
         }
       });
     };

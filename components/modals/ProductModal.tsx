@@ -28,9 +28,9 @@ export default function ProductModal({
   const [priceInput, setPriceInput] = useState('');
   const [isKeypadOpen, setIsKeypadOpen] = useState(false);
 
-  // Extract unique existing categories automatically
+  // Extract unique existing categories dynamically from products DB
   const existingCategories = useMemo(() => {
-    const set = new Set(['Es Lilin', 'Udang Keju', 'Bakso Bakar', 'Snack', 'Minuman', 'Bahan Baku']);
+    const set = new Set<string>();
     products.forEach((p) => {
       if (p.category) set.add(p.category);
     });
@@ -50,8 +50,13 @@ export default function ProductModal({
       setPriceInput(formatNumberWithDots(initialData.price));
     } else {
       setName('');
-      setSelectedCategory(existingCategories[0] || 'Es Lilin');
-      setCustomCategory('');
+      if (existingCategories.length > 0) {
+        setSelectedCategory(existingCategories[0]);
+        setCustomCategory('');
+      } else {
+        setSelectedCategory('__NEW__');
+        setCustomCategory('');
+      }
       setPriceInput('');
     }
   }, [initialData, isOpen, existingCategories]);

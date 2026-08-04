@@ -21,24 +21,25 @@ export default function ProductionModal({
   onSubmit,
 }: ProductionModalProps) {
   const pendingBatches = purchaseBatches.filter((b) => b.status === 'pending_production');
-  const [selectedBatchId, setSelectedBatchId] = useState<string>(pendingBatches[0]?.batchId || '');
-  const [selectedProductId, setSelectedProductId] = useState<string>(products[0]?.id || '');
-  const [qtyInput, setQtyInput] = useState<string>('100');
+  const [selectedBatchId, setSelectedBatchId] = useState<string>('');
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [qtyInput, setQtyInput] = useState<string>('');
 
   if (!isOpen) return null;
 
   const currentBatch = pendingBatches.find((b) => b.batchId === (selectedBatchId || pendingBatches[0]?.batchId));
-  const rawQty = parseFormattedNumber(qtyInput) || 1;
-  const estimatedHpp = currentBatch ? calculatePrecisionHpp(currentBatch.totalCost, rawQty) : 0;
+  const rawQty = parseFormattedNumber(qtyInput) || 0;
+  const estimatedHpp = currentBatch && rawQty > 0 ? calculatePrecisionHpp(currentBatch.totalCost, rawQty) : 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (rawQty <= 0) return;
     onSubmit({
       batchId: selectedBatchId || pendingBatches[0]?.batchId || '',
       productId: selectedProductId || products[0]?.id || '',
       producedQty: rawQty,
     });
-    setQtyInput('100');
+    setQtyInput('');
   };
 
   const handleQtyChange = (e: React.ChangeEvent<HTMLInputElement>) => {

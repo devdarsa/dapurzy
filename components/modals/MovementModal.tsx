@@ -20,17 +20,18 @@ interface MovementModalProps {
 }
 
 export default function MovementModal({ isOpen, onClose, products, mitras, onSubmit }: MovementModalProps) {
-  const [selectedProductId, setSelectedProductId] = useState<string>(products[0]?.id || '');
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [type, setType] = useState<'GUDANG_TO_MITRA' | 'MITRA_TO_GUDANG' | 'RETUR' | 'RUSAK' | 'HILANG'>('GUDANG_TO_MITRA');
-  const [selectedMitraId, setSelectedMitraId] = useState<string>(mitras[0]?.id || '');
-  const [qtyInput, setQtyInput] = useState<string>('10');
+  const [selectedMitraId, setSelectedMitraId] = useState<string>('');
+  const [qtyInput, setQtyInput] = useState<string>('');
   const [note, setNote] = useState<string>('');
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const rawQty = parseFormattedNumber(qtyInput) || 1;
+    const rawQty = parseFormattedNumber(qtyInput) || 0;
+    if (rawQty <= 0) return;
     onSubmit({
       productId: selectedProductId || products[0]?.id || '',
       type,
@@ -38,7 +39,7 @@ export default function MovementModal({ isOpen, onClose, products, mitras, onSub
       quantity: rawQty,
       note,
     });
-    setQtyInput('10');
+    setQtyInput('');
     setNote('');
   };
 

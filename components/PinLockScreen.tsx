@@ -30,13 +30,8 @@ export default function PinLockScreen({ onUnlockSuccess }: PinLockScreenProps) {
         setTimeout(() => setEnteredPin(''), 600);
       }
     } catch (e) {
-      // Offline / Connection Fallback verification
-      if (pin === '250423') {
-        onUnlockSuccess(pin);
-      } else {
-        setErrorMsg('Gagal terhubung ke Database. Coba lagi.');
-        setTimeout(() => setEnteredPin(''), 600);
-      }
+      setErrorMsg('Gagal terhubung ke Database. Periksa koneksi internet Anda dan coba lagi.');
+      setTimeout(() => setEnteredPin(''), 600);
     } finally {
       setIsVerifying(false);
     }
